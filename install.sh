@@ -51,8 +51,8 @@ fi
 cp "$REPO/init.lua" "$DEST"
 # fix sox path on Intel Macs
 [ "$SOX_PATH" != "/opt/homebrew/bin/sox" ] && sed -i '' "s#/opt/homebrew/bin/sox#$SOX_PATH#g" "$DEST"
-# restore a previously-saved key
-[ -n "$OLD_KEY" ] && sed -i '' "s#YOUR_ELEVENLABS_API_KEY#$OLD_KEY#" "$DEST"
+# restore a previously-saved key (only on the assignment line)
+[ -n "$OLD_KEY" ] && sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$OLD_KEY#" "$DEST"
 
 # --- 5. API key ------------------------------------------------------------
 if grep -q "YOUR_ELEVENLABS_API_KEY" "$DEST"; then
@@ -62,7 +62,7 @@ if grep -q "YOUR_ELEVENLABS_API_KEY" "$DEST"; then
   printf "Paste your API key here and press Return (or just Return to skip): "
   read -r KEY < /dev/tty || KEY=""
   if [ -n "$KEY" ]; then
-    sed -i '' "s#YOUR_ELEVENLABS_API_KEY#$KEY#" "$DEST"; say "API key saved."
+    sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$KEY#" "$DEST"; say "API key saved."
   else
     say "Skipped — open $DEST later and replace YOUR_ELEVENLABS_API_KEY."
   fi

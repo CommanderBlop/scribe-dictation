@@ -137,7 +137,7 @@ end
 
 local function startRec()
   if rtTask then return end   -- don't start paragraph mode while realtime streams
-  if M.apiKey == "YOUR_ELEVENLABS_API_KEY" then
+  if not M.apiKey:match("^sk_") then
     hs.alert.show("Set your ElevenLabs API key in init.lua first"); return
   end
   setState("recording")
@@ -194,7 +194,7 @@ end
 
 local function rtStart()
   if rtTask or state ~= "idle" then return end
-  if M.apiKey == "YOUR_ELEVENLABS_API_KEY" then
+  if not M.apiKey:match("^sk_") then
     hs.alert.show("Set your ElevenLabs API key in init.lua first"); return
   end
   if not hs.fs.attributes(M.pyProject .. "/.venv/bin/python") then

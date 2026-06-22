@@ -44,16 +44,43 @@ Fn+F4: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► past
 
 ---
 
-## Quick start
+## Install
 
-From a fresh MacBook to working dictation in about 5 minutes. Steps 1–2 are
-copy-paste in Terminal; steps 3–4 need a few clicks (an API key and macOS
-permissions can't be scripted). Paragraph mode (Fn+F5) is all you need to start —
-realtime (Fn+F4) is an optional add-on in step 6.
+### Option A — one command (recommended) ⭐
+
+1. **Open Terminal:** press `⌘ Space`, type `Terminal`, press Return.
+2. **Paste this line, press Return,** and follow the prompts:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/CommanderBlop/scribe-dictation/main/install.sh)"
+```
+
+It installs everything (Homebrew, sox, Hammerspoon, the tool itself), asks you to
+**paste your ElevenLabs API key**, and opens the two macOS permission screens.
+
+Then do the only two things macOS won't let a script do for you:
+
+- **Turn on "Hammerspoon"** under both **Accessibility** and **Microphone** in the
+  Settings windows that pop up.
+- Click the **🔨** in your menu bar → **Reload Config**.
+
+That's it — click into any text box, press **Fn+F5**, talk, press **Fn+F5** again.
+
+> Need an API key first? Get one free-ish at **[elevenlabs.io](https://elevenlabs.io/)
+> → Profile → API Keys** (give it the *Speech to Text* permission; add *User → Read*
+> for the credit popup). The installer will ask you to paste it.
+
+---
+
+### Option B — manual, step by step
+
+Prefer to see every step (or the one-liner failed)? Same result, by hand. Steps 1–2
+are copy-paste; 3–4 need a few clicks. Paragraph mode (Fn+F5) is all you need to
+start — realtime (Fn+F4) is the optional add-on in step 6.
 
 > **Open Terminal:** press `⌘ Space`, type "Terminal", hit Return.
 
-### 1. Install Homebrew + dependencies
+#### 1. Install Homebrew + dependencies
 
 If you don't already have [Homebrew](https://brew.sh/) (check with `brew --version`):
 
@@ -73,7 +100,7 @@ brew install --cask hammerspoon
 > `/usr/local/bin/sox`. Run `which sox` and, if it differs, update `M.sox` (and
 > the `PATH` in the realtime env) in `init.lua`.
 
-### 2. Get the code and install the config
+#### 2. Get the code and install the config
 
 ```bash
 git clone https://github.com/CommanderBlop/scribe-dictation.git ~/projects/scribe-dictation
@@ -86,7 +113,7 @@ cp init.lua ~/.hammerspoon/init.lua
 > Instead save it as `~/.hammerspoon/scribe.lua` and add `require("scribe")` to your
 > existing `init.lua`.
 
-### 3. Add your API key
+#### 3. Add your API key
 
 Create a key at **[elevenlabs.io](https://elevenlabs.io/) → Profile → API Keys**.
 Give it the **Speech to Text** permission (and **User → Read** too, if you want the
@@ -106,7 +133,7 @@ M.apiKey = os.getenv("ELEVENLABS_API_KEY") or "YOUR_ELEVENLABS_API_KEY"
 > Hammerspoon is a GUI app and **won't** see a key you `export` in a shell, so
 > pasting it into the file is the reliable option.
 
-### 4. Launch Hammerspoon and grant permissions
+#### 4. Launch Hammerspoon and grant permissions
 
 ```bash
 open -a Hammerspoon
@@ -120,7 +147,7 @@ Grant Hammerspoon two permissions in **System Settings → Privacy & Security**
 | **Accessibility** | Simulate ⌘V paste and capture global hotkeys   |
 | **Microphone**    | `sox` records your mic (prompts on first use)  |
 
-### 5. Reload and dictate
+#### 5. Reload and dictate
 
 Click the Hammerspoon **🔨** in the menu bar → **Reload Config**. You'll see a
 "Scribe loaded" notification. Now focus any text field (Claude, browser, notes…),
@@ -131,7 +158,7 @@ the cursor.
 > **single F5 is Apple Dictation**; this tool deliberately binds **Fn+F5** so the two
 > don't clash (see "About the Fn+F5 key" below).
 
-### 6. (Optional) Enable realtime mode
+#### 6. (Optional) Enable realtime mode
 
 For live, segment-by-segment dictation on **Fn+F4**, do the one-time Python setup in
 the [Realtime mode](#realtime-mode-fnf4) section below.

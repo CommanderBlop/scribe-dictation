@@ -46,66 +46,95 @@ Fn+F4: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► past
 
 ## Quick start
 
-### 1. Install dependencies
+From a fresh MacBook to working dictation in about 5 minutes. Steps 1–2 are
+copy-paste in Terminal; steps 3–4 need a few clicks (an API key and macOS
+permissions can't be scripted). Paragraph mode (Fn+F5) is all you need to start —
+realtime (Fn+F4) is an optional add-on in step 6.
+
+> **Open Terminal:** press `⌘ Space`, type "Terminal", hit Return.
+
+### 1. Install Homebrew + dependencies
+
+If you don't already have [Homebrew](https://brew.sh/) (check with `brew --version`):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Then install the two things this tool needs — `sox` (records the mic) and
+Hammerspoon (the automation app that holds the hotkeys):
 
 ```bash
 brew install sox
 brew install --cask hammerspoon
 ```
 
-> On Intel Macs, `sox` installs to `/usr/local/bin/sox`. Check with `which sox`
-> and update `M.sox` in `init.lua` if needed.
+> On **Intel** Macs, Homebrew lives at `/usr/local`, so `sox` is
+> `/usr/local/bin/sox`. Run `which sox` and, if it differs, update `M.sox` (and
+> the `PATH` in the realtime env) in `init.lua`.
 
-### 2. Install the config
+### 2. Get the code and install the config
 
 ```bash
+git clone https://github.com/CommanderBlop/scribe-dictation.git ~/projects/scribe-dictation
+cd ~/projects/scribe-dictation
 mkdir -p ~/.hammerspoon
 cp init.lua ~/.hammerspoon/init.lua
 ```
 
-> ⚠️ If you already use Hammerspoon, this overwrites your `init.lua`. In that case
-> save it as `~/.hammerspoon/scribe.lua` and add `require("scribe")` to your existing
-> `init.lua` instead.
+> ⚠️ Already a Hammerspoon user? `cp` overwrites your `~/.hammerspoon/init.lua`.
+> Instead save it as `~/.hammerspoon/scribe.lua` and add `require("scribe")` to your
+> existing `init.lua`.
 
 ### 3. Add your API key
 
-Get a key at **elevenlabs.io → Profile → API Keys**. Give it the **Speech to Text**
-permission, and — if you want the credit toast (see below) — also **User → Read**.
-Then edit `~/.hammerspoon/init.lua` and replace the placeholder:
+Create a key at **[elevenlabs.io](https://elevenlabs.io/) → Profile → API Keys**.
+Give it the **Speech to Text** permission (and **User → Read** too, if you want the
+credit toast). Then open the config and paste your key in:
+
+```bash
+open -e ~/.hammerspoon/init.lua     # opens in TextEdit
+```
+
+Replace the placeholder on the `M.apiKey` line:
 
 ```lua
 M.apiKey = os.getenv("ELEVENLABS_API_KEY") or "YOUR_ELEVENLABS_API_KEY"
+--                                            ^ paste your sk-... key here
 ```
 
-Hammerspoon is a GUI app and **won't** see a key you `export` in your shell.
-Either paste the key directly into the line above, or set it for GUI apps with:
+> Hammerspoon is a GUI app and **won't** see a key you `export` in a shell, so
+> pasting it into the file is the reliable option.
 
-```bash
-launchctl setenv ELEVENLABS_API_KEY sk-your-key-here
-```
-
-### 4. Launch and grant permissions
+### 4. Launch Hammerspoon and grant permissions
 
 ```bash
 open -a Hammerspoon
 ```
 
-Grant Hammerspoon two permissions in **System Settings → Privacy & Security**:
+Grant Hammerspoon two permissions in **System Settings → Privacy & Security**
+(toggle it on under each; add it with `+` if it's not listed):
 
-| Permission       | Why                                            |
-|------------------|------------------------------------------------|
-| **Accessibility**| Simulate ⌘V paste and capture global hotkeys   |
-| **Microphone**   | `sox` records your mic (prompts on first use)  |
+| Permission        | Why                                            |
+|-------------------|------------------------------------------------|
+| **Accessibility** | Simulate ⌘V paste and capture global hotkeys   |
+| **Microphone**    | `sox` records your mic (prompts on first use)  |
 
-Then click the Hammerspoon menu-bar hammer → **Reload Config**. You should see a
-"Scribe dictation loaded" notification.
+### 5. Reload and dictate
 
-### 5. Dictate
+Click the Hammerspoon **🔨** in the menu bar → **Reload Config**. You'll see a
+"Scribe loaded" notification. Now focus any text field (Claude, browser, notes…),
+press **Fn+F5**, speak a sentence, and press **Fn+F5** again — the text is pasted at
+the cursor.
 
-Focus any text field, press **Fn+F5**, speak, then press **Fn+F5** again. The
-transcribed text is pasted at the cursor.
+> 🔴 = recording, ⏳ = transcribing, nothing = idle. On a media-key function row,
+> **single F5 is Apple Dictation**; this tool deliberately binds **Fn+F5** so the two
+> don't clash (see "About the Fn+F5 key" below).
 
-While recording a 🔴 appears in the menu bar; ⏳ while transcribing; nothing when idle.
+### 6. (Optional) Enable realtime mode
+
+For live, segment-by-segment dictation on **Fn+F4**, do the one-time Python setup in
+the [Realtime mode](#realtime-mode-fnf4) section below.
 
 ---
 

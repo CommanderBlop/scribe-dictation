@@ -349,10 +349,28 @@ Open the Hammerspoon **Console** (menu-bar hammer → Console) to see logs.
 
 ---
 
+## Uninstall
+
+One command (it asks before removing anything shared, like the Hammerspoon app):
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/CommanderBlop/scribe-dictation/main/uninstall.sh)"
+```
+
+It quits Hammerspoon, removes/restores `~/.hammerspoon/init.lua`, removes the
+optional key LaunchAgent + the `~/.zshrc` line, and offers to delete the cloned
+repo and the brew tools. Homebrew itself is left alone. You should still **revoke
+the API key** at elevenlabs.io and clear "Hammerspoon" from Accessibility /
+Microphone in System Settings if you removed the app.
+
+---
+
 ## Security note
 
-Your API key is stored in plaintext in `init.lua`. Don't commit a real key.
-The `init.lua` here ships with a placeholder; keep it that way in version control.
+If you paste your key into `init.lua` it's stored in plaintext, so the installer
+`chmod 600`s the file. Either way, **never commit a real key** — the `init.lua`
+in this repo ships with a placeholder; keep it that way. For the least exposure,
+use the Keychain option in [Store the key once](#store-the-key-once).
 
 ---
 

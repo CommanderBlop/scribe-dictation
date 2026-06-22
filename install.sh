@@ -68,6 +68,9 @@ if grep -q "YOUR_ELEVENLABS_API_KEY" "$DEST"; then
   fi
 fi
 
+# the config may now hold your key in plaintext — restrict it to you
+chmod 600 "$DEST" 2>/dev/null || true
+
 # --- 6. optional realtime mode --------------------------------------------
 printf "Enable realtime mode too (Fn+F4, live dictation)? [y/N]: "
 read -r RT < /dev/tty || RT=""

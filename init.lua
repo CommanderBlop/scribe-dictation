@@ -45,7 +45,8 @@ M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your clone
 
 -- If no env var and no hardcoded key, fall back to the macOS Keychain.
 -- (Reading it may prompt once for Keychain access — click "Always Allow".)
-if not M.apiKey:match("^sk_") and M.keychainService and M.keychainService ~= "" then
+-- (service name guarded to safe chars so it can't break the shell string)
+if not M.apiKey:match("^sk_") and M.keychainService and M.keychainService:match("^[%w._-]+$") then
   local out, ok = hs.execute(
     "/usr/bin/security find-generic-password -s '" .. M.keychainService .. "' -w 2>/dev/null")
   if ok and out then

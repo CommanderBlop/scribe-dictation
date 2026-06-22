@@ -168,13 +168,37 @@ the [Realtime mode](#realtime-mode-fnf4) section below.
 
 ## Store the key once
 
-`init.lua` reads `os.getenv("ELEVENLABS_API_KEY")` before falling back to the
-hardcoded value, so you can keep the key in **one place** instead of in the file.
-The catch: Hammerspoon is a GUI app and doesn't see variables you `export` in a
-shell. The fix is a tiny **LaunchAgent** that sets the variable at login (visible
-to GUI apps and persistent across reboots).
+Instead of hardcoding the key, keep it in **one place**. `init.lua` resolves it at
+load, first match wins:
 
-Create `~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist`:
+1. `$ELEVENLABS_API_KEY` (environment)
+2. the hardcoded `M.apiKey` literal
+3. the macOS **Keychain** (service `M.keychainService`, default `elevenlabs-api`)
+
+Pick one of the two "set once" options below — Keychain is the most secure.
+
+### Keychain — recommended (encrypted, app-scoped)
+
+```bash
+security add-generic-password -a "$USER" -s elevenlabs-api -w sk-your-key-here -U
+```
+
+Leave `M.apiKey` as the placeholder and reload Hammerspoon. The first read pops a
+Keychain prompt — click **Always Allow**. The key is stored encrypted, not in any
+plaintext file. For the **terminal** too (e.g. running the realtime engine by
+hand), derive it from the same source:
+
+```bash
+export ELEVENLABS_API_KEY="$(security find-generic-password -s elevenlabs-api -w 2>/dev/null)"
+```
+
+Rotate by re-running the `add-generic-password … -U` line with the new key, then
+reload Hammerspoon. Nothing else to change.
+
+### LaunchAgent env var — convenient, but least private
+
+A login LaunchAgent that runs `launchctl setenv` makes the key a GUI-visible,
+persistent environment variable:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -190,31 +214,19 @@ Create `~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist`:
 </dict></plist>
 ```
 
-Load it (and set it now, so you don't have to reboot):
-
 ```bash
+chmod 600 ~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist
 launchctl load -w ~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist
-launchctl setenv ELEVENLABS_API_KEY sk-your-key-here
+launchctl setenv ELEVENLABS_API_KEY sk-your-key-here   # now, no reboot needed
 ```
 
-Then **fully quit and reopen Hammerspoon** (a Reload isn't enough — the env is
-inherited at launch). Leave `M.apiKey` as the placeholder; it'll use the variable.
-For your **terminal** too (e.g. running the realtime engine by hand), add to
-`~/.zshrc` — derived from the same single source:
+Then **fully quit and reopen Hammerspoon** (a Reload isn't enough — env is inherited
+at launch). Shell side: `export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLABS_API_KEY 2>/dev/null)"`.
 
-```bash
-export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLABS_API_KEY 2>/dev/null)"
-```
-
-**Rotating the key:** edit the one `<string>` in the plist, then:
-
-```bash
-launchctl setenv ELEVENLABS_API_KEY sk-new-key
-osascript -e 'quit app "Hammerspoon"'; open -a Hammerspoon
-```
-
-> More security-conscious? Store the key in the macOS Keychain and read it in
-> `init.lua` with `hs.execute("security find-generic-password -s elevenlabs -w")`.
+> ⚠️ `launchctl setenv` publishes the key to your **whole login session** — *any*
+> process you run can read it with `launchctl getenv`, and the plist holds it in
+> plaintext. That's broader exposure than the Keychain or a `chmod 600` init.lua.
+> Prefer the Keychain unless you specifically need a shared env var.
 
 ---
 

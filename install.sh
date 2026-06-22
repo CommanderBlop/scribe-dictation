@@ -29,7 +29,7 @@ fi
 say "Installing sox and Hammerspoon…"
 brew list sox >/dev/null 2>&1            || brew install sox
 brew list --cask hammerspoon >/dev/null 2>&1 || brew install --cask hammerspoon
-SOX_PATH="$(command -v sox)"
+SOX_PATH="$(command -v sox || true)"
 
 # --- 3. download / update the tool ----------------------------------------
 if [ -d "$REPO/.git" ]; then
@@ -49,8 +49,9 @@ if [ -f "$DEST" ] && ! grep -q "Scribe Dictation\|Scribe v2 push-to-talk" "$DEST
   cp "$DEST" "$DEST.bak.$(date +%s)"; say "Backed up your existing config to $DEST.bak.*"
 fi
 cp "$REPO/init.lua" "$DEST"
-# fix sox path on Intel Macs
-[ "$SOX_PATH" != "/opt/homebrew/bin/sox" ] && sed -i '' "s#/opt/homebrew/bin/sox#$SOX_PATH#g" "$DEST"
+# fix sox path on Intel Macs (only if we actually found a different one)
+[ -n "$SOX_PATH" ] && [ "$SOX_PATH" != "/opt/homebrew/bin/sox" ] && \
+  sed -i '' "s#/opt/homebrew/bin/sox#$SOX_PATH#g" "$DEST"
 # restore a previously-saved key (only on the assignment line)
 [ -n "$OLD_KEY" ] && sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$OLD_KEY#" "$DEST"
 
@@ -61,10 +62,17 @@ if grep -q "YOUR_ELEVENLABS_API_KEY" "$DEST"; then
   echo "(needs the 'Speech to Text' permission; add 'User -> Read' for the credit popup)."
   printf "Paste your API key here and press Return (or just Return to skip): "
   read -r KEY < /dev/tty || KEY=""
+  # Validate the format before using it in sed — an ElevenLabs key is sk_ + alnum.
+  # This both catches fat-fingered pastes and prevents sed-injection via stray
+  # delimiters (#, &, \, newlines) in a malformed value.
+  if [ -n "$KEY" ] && ! printf '%s' "$KEY" | grep -qE '^sk_[A-Za-z0-9]+$'; then
+    say "That doesn't look like an ElevenLabs key (expected sk_…). Not saved."
+    KEY=""
+  fi
   if [ -n "$KEY" ]; then
     sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$KEY#" "$DEST"; say "API key saved."
   else
-    say "Skipped — open $DEST later and replace YOUR_ELEVENLABS_API_KEY."
+    say "No key set — open $DEST later and replace YOUR_ELEVENLABS_API_KEY."
   fi
 fi
 

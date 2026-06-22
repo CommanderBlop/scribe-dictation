@@ -64,35 +64,44 @@ async def pump_audio(ws, proc):
 async def receive(ws, emit: bool):
     """Surface transcripts. `emit` -> plain finalized lines for piping."""
     last = None
-    async for raw in ws:
-        m = json.loads(raw)
-        t = m.get("message_type")
-        if t == "session_started":
-            print(f"● session {m.get('session_id', '')[:8]} — speak now",
+    try:
+        async for raw in ws:
+            try:
+                m = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue  # ignore a malformed frame, keep streaming
+            t = m.get("message_type")
+            if t == "session_started":
+                print(f"● session {m.get('session_id', '')[:8]} — speak now",
+                      file=sys.stderr, flush=True)
+            elif t == "partial_transcript":
+                if not emit:
+                    sys.stdout.write("\r\033[K… " + m.get("text", ""))
+                    sys.stdout.flush()
+            # The server sends BOTH committed_transcript and *_with_timestamps for
+            # each segment, and occasionally repeats the same segment; we use only
+            # the richer one and drop consecutive duplicates, so every finalized
+            # segment surfaces exactly once.
+            elif t == "committed_transcript_with_timestamps":
+                text = (m.get("text") or "").strip()
+                if not text or text == last:
+                    continue
+                last = text
+                if emit:
+                    print(text, flush=True)          # one plain line -> Hammerspoon
+                else:
+                    lang = m.get("language_code", "")
+                    tag = f" [{lang}]" if lang else ""
+                    sys.stdout.write("\r\033[K✓ " + text + tag + "\n")
+                    sys.stdout.flush()
+            elif t == "committed_transcript":
+                pass  # ignored — duplicate of the with_timestamps message
+            elif t and "error" in t:
+                print(f"[server {t}] {m.get('message') or m}", file=sys.stderr, flush=True)
+    except websockets.ConnectionClosed as e:
+        if e.code not in (1000, 1001):  # not a normal close
+            print(f"[connection closed {e.code}] {e.reason or ''}".rstrip(),
                   file=sys.stderr, flush=True)
-        elif t == "partial_transcript":
-            if not emit:
-                sys.stdout.write("\r\033[K… " + m.get("text", ""))
-                sys.stdout.flush()
-        # The server sends BOTH committed_transcript and *_with_timestamps for
-        # each segment; we use only the richer one and skip repeats, so every
-        # finalized segment surfaces exactly once.
-        elif t == "committed_transcript_with_timestamps":
-            text = (m.get("text") or "").strip()
-            if not text or text == last:
-                continue
-            last = text
-            if emit:
-                print(text, flush=True)          # one plain line -> Hammerspoon
-            else:
-                lang = m.get("language_code", "")
-                tag = f" [{lang}]" if lang else ""
-                sys.stdout.write("\r\033[K✓ " + text + tag + "\n")
-                sys.stdout.flush()
-        elif t == "committed_transcript":
-            pass  # ignored — duplicate of the with_timestamps message
-        elif t and "error" in t:
-            print(f"[server {t}] {m.get('message') or m}", file=sys.stderr, flush=True)
 
 
 async def main():
@@ -107,20 +116,44 @@ async def main():
         sys.exit("Set ELEVENLABS_API_KEY first.")
 
     url = build_url("manual" if args.manual else "vad")
-    proc = await asyncio.create_subprocess_exec(
-        SOX, "-d", "-q", "-t", "raw", "-r", str(SAMPLE_RATE),
-        "-b", "16", "-c", "1", "-e", "signed-integer", "-",
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
-    )
+    # Capture sox's stderr so a failure (e.g. mic permission denied, no input
+    # device) can be reported instead of hanging silently.
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            SOX, "-d", "-q", "-t", "raw", "-r", str(SAMPLE_RATE),
+            "-b", "16", "-c", "1", "-e", "signed-integer", "-",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+    except (FileNotFoundError, PermissionError) as e:
+        sys.exit(f"Could not start sox ({SOX}): {e}")
+
     try:
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
                                       max_size=None) as ws:
-            await asyncio.gather(pump_audio(ws, proc), receive(ws, args.emit))
+            pump = asyncio.create_task(pump_audio(ws, proc))
+            recv = asyncio.create_task(receive(ws, args.emit))
+            # Stop as soon as either side ends (sox dying ends pump -> we exit,
+            # rather than blocking forever waiting for transcripts).
+            done, pending = await asyncio.wait({pump, recv},
+                                               return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            for task in done:
+                exc = task.exception()
+                if exc:
+                    raise exc
     except websockets.InvalidStatus as e:
-        sys.exit(f"WebSocket rejected: {e}")
+        sys.exit(f"WebSocket rejected (check your API key / permissions): {e}")
     finally:
         if proc.returncode is None:
             proc.terminate()
+        await proc.wait()
+        # If sox failed (not a normal 0 / our SIGTERM), surface its error.
+        if proc.returncode not in (0, None, -15) and proc.stderr:
+            err = (await proc.stderr.read()).decode(errors="replace").strip()
+            if err:
+                print(f"[sox] {err}", file=sys.stderr)
 
 
 if __name__ == "__main__":

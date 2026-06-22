@@ -39,9 +39,12 @@ if [ -f "$PLIST" ]; then
   launchctl unsetenv ELEVENLABS_API_KEY 2>/dev/null || true
   rm -f "$PLIST"; say "Removed the API-key LaunchAgent and unset the variable."
 fi
-if grep -q "ELEVENLABS_API_KEY" "$ZSHRC" 2>/dev/null; then
-  sed -i '' '/Scribe Dictation/d; /ELEVENLABS_API_KEY/d' "$ZSHRC"
-  say "Removed the ELEVENLABS_API_KEY line(s) from ~/.zshrc."
+# Only our own lines: the marker comment and the derived-export forms we write
+# (`="$(launchctl getenv …` or `="$(security find-generic-password …`). A plain
+# `export ELEVENLABS_API_KEY=sk_…` the user added for other tools is left alone.
+if grep -qE 'Scribe Dictation|ELEVENLABS_API_KEY="\$\(' "$ZSHRC" 2>/dev/null; then
+  sed -i '' '/Scribe Dictation/d; /ELEVENLABS_API_KEY="$(/d' "$ZSHRC"
+  say "Removed our ELEVENLABS_API_KEY line(s) from ~/.zshrc (left any you added)."
 fi
 
 # 4. the downloaded repo (and its venv) — ask

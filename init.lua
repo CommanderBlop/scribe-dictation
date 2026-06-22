@@ -13,9 +13,11 @@ local M = {}
 -- ---------- CONFIG ----------
 -- API key (https://elevenlabs.io -> Profile -> API Keys). Needs the Speech to
 -- Text permission; add User -> Read too if you want the credit toast.
--- Hammerspoon is a GUI app and does NOT see your shell's exported vars, so the
--- simplest reliable option is to paste your key below.
+-- Resolved at load in order: $ELEVENLABS_API_KEY, then this literal, then the
+-- macOS Keychain (M.keychainService). Most secure: leave the literal as the
+-- placeholder and store the key in the Keychain — see README "Store the key once".
 M.apiKey   = os.getenv("ELEVENLABS_API_KEY") or "YOUR_ELEVENLABS_API_KEY"
+M.keychainService = "elevenlabs-api"   -- Keychain generic-password service name
 M.modelId  = "scribe_v2"
 M.sox      = "/opt/homebrew/bin/sox"        -- `which sox` (Apple Silicon default)
 M.recPath  = "/tmp/scribe_rec.wav"
@@ -41,6 +43,17 @@ M.realtimeKey = { mods = {}, key = "f4" }            -- nil to disable
 M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your cloned repo (.venv + realtime/)
 -- ----------------------------
 
+-- If no env var and no hardcoded key, fall back to the macOS Keychain.
+-- (Reading it may prompt once for Keychain access — click "Always Allow".)
+if not M.apiKey:match("^sk_") and M.keychainService and M.keychainService ~= "" then
+  local out, ok = hs.execute(
+    "/usr/bin/security find-generic-password -s '" .. M.keychainService .. "' -w 2>/dev/null")
+  if ok and out then
+    out = out:gsub("%s+$", "")
+    if out:match("^sk_") then M.apiKey = out end
+  end
+end
+
 local recTask, watchdog
 local recStart, recDuration = 0, 0
 local rtTask, rtBuf = nil, ""   -- realtime streamer task + stdout line buffer
@@ -62,6 +75,7 @@ end
 setState("idle")
 
 local function paste(text)
+  text = text:gsub("[\1-\8\11-\31\127]", "")   -- strip control chars (keep tab/newline)
   hs.pasteboard.setContents(text)
   if not hs.accessibilityState() then
     hs.alert.show("⚠️ Grant Accessibility to Hammerspoon to auto-paste.\nText is on the clipboard — press ⌘V.", 5)
@@ -73,11 +87,12 @@ local function paste(text)
   end)
 end
 
--- 12345 -> "12,345"
+-- 12345 -> "12,345" (handles negatives, e.g. an over-quota balance)
 local function commafy(n)
-  local s = tostring(math.floor(n))
+  local sign = n < 0 and "-" or ""
+  local s = tostring(math.floor(math.abs(n)))
   local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-  return (out:gsub("^,", ""))
+  return sign .. (out:gsub("^,", ""))
 end
 
 -- Toast: estimated cost of this clip + real remaining balance.
@@ -130,7 +145,6 @@ local function transcribe()
       hs.alert.show("Scribe API: " .. hs.inspect(json.detail))
     else
       hs.alert.show("Scribe: empty/unexpected response")
-      print("Scribe raw response: " .. tostring(stdout))
     end
   end, args):start()
 end
@@ -171,11 +185,11 @@ end
 -- Launches the Python engine; each finalized segment it prints is pasted at
 -- the cursor as you speak. 🟢 in the menu bar while streaming.
 local function rtPaste(line)
-  line = line:gsub("%s+$", "")
+  line = line:gsub("[\1-\8\11-\31\127]", ""):gsub("%s+$", "")
   if line == "" then return end
   hs.pasteboard.setContents(line)
   if hs.accessibilityState() then
-    hs.timer.doAfter(0.04, function() hs.eventtap.keyStroke({"cmd"}, "v") end)
+    hs.timer.doAfter(0.08, function() hs.eventtap.keyStroke({"cmd"}, "v") end)
   end
 end
 

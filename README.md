@@ -131,7 +131,8 @@ M.apiKey = os.getenv("ELEVENLABS_API_KEY") or "YOUR_ELEVENLABS_API_KEY"
 ```
 
 > Hammerspoon is a GUI app and **won't** see a key you `export` in a shell, so
-> pasting it into the file is the reliable option.
+> pasting it into the file is the reliable option — unless you set it up as a
+> system-wide variable, see [Store the key once](#store-the-key-once) below.
 
 #### 4. Launch Hammerspoon and grant permissions
 
@@ -162,6 +163,58 @@ the cursor.
 
 For live, segment-by-segment dictation on **Fn+F4**, do the one-time Python setup in
 the [Realtime mode](#realtime-mode-fnf4) section below.
+
+---
+
+## Store the key once
+
+`init.lua` reads `os.getenv("ELEVENLABS_API_KEY")` before falling back to the
+hardcoded value, so you can keep the key in **one place** instead of in the file.
+The catch: Hammerspoon is a GUI app and doesn't see variables you `export` in a
+shell. The fix is a tiny **LaunchAgent** that sets the variable at login (visible
+to GUI apps and persistent across reboots).
+
+Create `~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.scribe.elevenlabs-key</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>launchctl</string><string>setenv</string>
+    <string>ELEVENLABS_API_KEY</string><string>sk-your-key-here</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+</dict></plist>
+```
+
+Load it (and set it now, so you don't have to reboot):
+
+```bash
+launchctl load -w ~/Library/LaunchAgents/com.scribe.elevenlabs-key.plist
+launchctl setenv ELEVENLABS_API_KEY sk-your-key-here
+```
+
+Then **fully quit and reopen Hammerspoon** (a Reload isn't enough — the env is
+inherited at launch). Leave `M.apiKey` as the placeholder; it'll use the variable.
+For your **terminal** too (e.g. running the realtime engine by hand), add to
+`~/.zshrc` — derived from the same single source:
+
+```bash
+export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLABS_API_KEY 2>/dev/null)"
+```
+
+**Rotating the key:** edit the one `<string>` in the plist, then:
+
+```bash
+launchctl setenv ELEVENLABS_API_KEY sk-new-key
+osascript -e 'quit app "Hammerspoon"'; open -a Hammerspoon
+```
+
+> More security-conscious? Store the key in the macOS Keychain and read it in
+> `init.lua` with `hs.execute("security find-generic-password -s elevenlabs -w")`.
 
 ---
 

@@ -1,0 +1,10 @@
+# Never commit a real key — keep init.lua's placeholder in version control.
+# If you keep a personal copy with your key, name it like this and it's ignored:
+init.local.lua
+*.wav
+.DS_Store
+
+# Python realtime prototype
+.venv/
+__pycache__/
+*.pyc

@@ -1,0 +1,4 @@
+websockets>=15
+# Needed only if you connect through a SOCKS proxy (e.g. Clash exposing
+# ALL_PROXY=socks5://127.0.0.1:7890). Harmless to install otherwise.
+python-socks>=2

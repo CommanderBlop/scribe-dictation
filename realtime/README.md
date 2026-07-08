@@ -42,6 +42,10 @@ talk and a `✓` line each time you pause (VAD commit).
 - Audio: `pcm_16000`, 100 ms chunks, base64 in `input_audio_chunk` messages
 - Auth: `xi-api-key` header (no single-use token needed for local use)
 - `commit_strategy=vad` lets the server segment on silence; `manual` defers commits
+- `--silence <secs>` (default 0.6, API default 1.5) sets how long a pause finalizes a
+  segment. Lower = text appears sooner; it's still the *committed* (final) transcript,
+  never a partial, so pasted text is never revised afterwards. Tunable from Hammerspoon
+  via `M.realtimeSilenceSecs`.
 - Realtime is billed at ~$0.39/audio-hour (≈1.8× the batch rate) — see the main README
 
 ## Next step

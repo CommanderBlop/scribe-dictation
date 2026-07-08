@@ -35,13 +35,18 @@ SAMPLE_RATE = 16000
 CHUNK_BYTES = 3200  # 16-bit mono @16kHz -> 100ms per chunk
 
 
-def build_url(commit_strategy: str) -> str:
+def build_url(commit_strategy: str, silence_secs: float) -> str:
     params = {
         "model_id": "scribe_v2_realtime",
         "audio_format": f"pcm_{SAMPLE_RATE}",
         "commit_strategy": commit_strategy,  # "vad" or "manual"
         "include_language_detection": "true",
     }
+    # Lower silence threshold -> the server finalizes (commits) a segment after a
+    # shorter pause -> text appears sooner. API default is 1.5s; we run tighter.
+    # Committed text is still final, so pasting stays safe.
+    if commit_strategy == "vad":
+        params["vad_silence_threshold_secs"] = silence_secs
     return f"{WS_BASE}?" + "&".join(f"{k}={v}" for k, v in params.items())
 
 
@@ -109,13 +114,16 @@ async def main():
     ap.add_argument("--manual", action="store_true", help="manual commit (no VAD)")
     ap.add_argument("--emit", action="store_true",
                     help="print only finalized text, one plain line each")
+    ap.add_argument("--silence", type=float, default=0.6,
+                    help="VAD silence (secs) before a segment is finalized; "
+                         "lower = faster output, less trailing context (API default 1.5)")
     args = ap.parse_args()
 
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         sys.exit("Set ELEVENLABS_API_KEY first.")
 
-    url = build_url("manual" if args.manual else "vad")
+    url = build_url("manual" if args.manual else "vad", args.silence)
     # Capture sox's stderr so a failure (e.g. mic permission denied, no input
     # device) can be reported instead of hanging silently.
     try:

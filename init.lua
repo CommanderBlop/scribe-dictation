@@ -41,6 +41,9 @@ M.proxy = nil             -- e.g. "http://127.0.0.1:7890"
 -- via the Python engine in realtime/scribe_stream.py (see realtime/README).
 M.realtimeKey = { mods = {}, key = "f4" }            -- nil to disable
 M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your cloned repo (.venv + realtime/)
+-- How long a pause finalizes a realtime segment. Lower = text appears sooner
+-- (still final, never revised after paste). API default 1.5s; 0.6 feels live.
+M.realtimeSilenceSecs = 0.6
 -- ----------------------------
 
 -- If no env var and no hardcoded key, fall back to the macOS Keychain.
@@ -238,7 +241,8 @@ local function rtStart()
       end
       return true
     end,
-    {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit"})
+    {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
+     "--silence", tostring(M.realtimeSilenceSecs)})
   local env = { ELEVENLABS_API_KEY = M.apiKey, PATH = "/opt/homebrew/bin:/usr/bin:/bin" }
   if M.proxy then env.HTTP_PROXY = M.proxy; env.HTTPS_PROXY = M.proxy; env.ALL_PROXY = M.proxy end
   rtTask:setEnvironment(env)

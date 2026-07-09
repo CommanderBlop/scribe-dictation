@@ -58,6 +58,16 @@ if not M.apiKey:match("^sk_") and M.keychainService and M.keychainService:match(
   end
 end
 
+-- Use the proxy only if it's actually listening; otherwise go direct. Handles a
+-- proxy app (e.g. Clash) being toggled on/off without breaking transcription.
+local function activeProxy()
+  if not M.proxy then return nil end
+  local host, port = M.proxy:match("://([^:/]+):(%d+)")
+  if not host then return M.proxy end   -- unparseable → trust the config
+  local _, ok = hs.execute("/usr/bin/nc -z -G1 " .. host .. " " .. port .. " >/dev/null 2>&1")
+  return ok and M.proxy or nil
+end
+
 local recTask, watchdog
 local recStart, recDuration = 0, 0
 local rtTask, rtBuf = nil, ""   -- realtime streamer task + stdout line buffer
@@ -111,7 +121,8 @@ local function updateUsage(durSecs, ratePerMin)
   local uargs = {"-sS", "--max-time", "10",
                  "https://api.elevenlabs.io/v1/user/subscription",
                  "-H", "xi-api-key: " .. M.apiKey}
-  if M.proxy then table.insert(uargs, "-x"); table.insert(uargs, M.proxy) end
+  local px = activeProxy()
+  if px then table.insert(uargs, "-x"); table.insert(uargs, px) end
   hs.task.new("/usr/bin/curl", function(code, stdout, stderr)
     if code ~= 0 then return end
     local ok, j = pcall(hs.json.decode, stdout)
@@ -134,7 +145,8 @@ local function transcribe()
   if M.languageCode then
     table.insert(args, "-F"); table.insert(args, "language_code=" .. M.languageCode)
   end
-  if M.proxy then table.insert(args, "-x"); table.insert(args, M.proxy) end
+  local px = activeProxy()
+  if px then table.insert(args, "-x"); table.insert(args, px) end
   hs.task.new("/usr/bin/curl", function(code, stdout, stderr)
     setState("idle")
     if code ~= 0 then
@@ -244,7 +256,8 @@ local function rtStart()
     {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
      "--silence", tostring(M.realtimeSilenceSecs)})
   local env = { ELEVENLABS_API_KEY = M.apiKey, PATH = "/opt/homebrew/bin:/usr/bin:/bin" }
-  if M.proxy then env.HTTP_PROXY = M.proxy; env.HTTPS_PROXY = M.proxy; env.ALL_PROXY = M.proxy end
+  local px = activeProxy()
+  if px then env.HTTP_PROXY = px; env.HTTPS_PROXY = px; env.ALL_PROXY = px end
   rtTask:setEnvironment(env)
   rtStartTime = hs.timer.secondsSinceEpoch()
   rtTask:start()

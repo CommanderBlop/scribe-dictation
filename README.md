@@ -271,7 +271,7 @@ All settings live at the top of `init.lua`:
 | `M.showCredits`     | `true`              | Show a credit toast after each transcription |
 | `M.creditsPerMinute`| `18.7`              | Credits/min for paragraph mode estimate (plan-dependent) |
 | `M.creditsPerMinuteRealtime`| `33.2`      | Credits/min for realtime estimate (realtime is ~1.77× pricier) |
-| `M.proxy`           | `nil`               | Route curl via a proxy, e.g. `"http://127.0.0.1:7890"` |
+| `M.proxy`           | `nil`               | Proxy, e.g. `"http://127.0.0.1:7890"`; used only when actually listening, else direct |
 | `M.realtimeKey`     | `Fn+F4`             | Realtime streaming toggle (`nil` to disable) |
 | `M.pyProject`       | `~/projects/scribe-dictation` | Path to this repo (has `.venv` + `realtime/`) |
 

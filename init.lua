@@ -62,8 +62,9 @@ end
 -- proxy app (e.g. Clash) being toggled on/off without breaking transcription.
 local function activeProxy()
   if not M.proxy then return nil end
-  local host, port = M.proxy:match("://([^:/]+):(%d+)")
-  if not host then return M.proxy end   -- unparseable → trust the config
+  -- host restricted to safe hostname/IP chars so it can't inject into the shell.
+  local host, port = M.proxy:match("://([%w%.%-]+):(%d+)")
+  if not host then return M.proxy end   -- odd format → trust config (curl -x / env are not shell)
   local _, ok = hs.execute("/usr/bin/nc -z -G1 " .. host .. " " .. port .. " >/dev/null 2>&1")
   return ok and M.proxy or nil
 end

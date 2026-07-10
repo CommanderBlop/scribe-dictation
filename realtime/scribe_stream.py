@@ -46,7 +46,7 @@ def build_url(commit_strategy: str, silence_secs: float) -> str:
     # shorter pause -> text appears sooner. API default is 1.5s; we run tighter.
     # Committed text is still final, so pasting stays safe.
     if commit_strategy == "vad":
-        params["vad_silence_threshold_secs"] = silence_secs
+        params["vad_silence_threshold_secs"] = f"{silence_secs:g}"
     return f"{WS_BASE}?" + "&".join(f"{k}={v}" for k, v in params.items())
 
 
@@ -122,6 +122,8 @@ async def main():
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         sys.exit("Set ELEVENLABS_API_KEY first.")
+    if args.silence <= 0:
+        sys.exit("--silence must be > 0 seconds")
 
     url = build_url("manual" if args.manual else "vad", args.silence)
     # Capture sox's stderr so a failure (e.g. mic permission denied, no input

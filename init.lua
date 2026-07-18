@@ -44,6 +44,9 @@ M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your clone
 -- How long a pause finalizes a realtime segment. Lower = text appears sooner
 -- (still final, never revised after paste). API default 1.5s; 0.6 feels live.
 M.realtimeSilenceSecs = 0.6
+-- Auto-close realtime after this many seconds with no new text (you probably
+-- forgot to stop it). Press Fn+F4 to resume. Set to 0 to disable.
+M.realtimeIdleSecs = 30
 -- ----------------------------
 
 -- If no env var and no hardcoded key, fall back to the macOS Keychain.
@@ -73,6 +76,7 @@ local recTask, watchdog
 local recStart, recDuration = 0, 0
 local rtTask, rtBuf = nil, ""   -- realtime streamer task + stdout line buffer
 local rtStartTime = 0           -- realtime stream start (for cost estimate)
+local rtIdleTimer = nil         -- auto-close-on-inactivity timer
 local state = "idle"      -- idle | recording | working
 
 -- Menu-bar icon: created on demand, only visible while active.
@@ -211,6 +215,7 @@ local function rtPaste(line)
 end
 
 local function rtStop()
+  if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
   if rtTask then
     if rtTask:isRunning() then rtTask:terminate() end
     rtTask = nil
@@ -221,6 +226,19 @@ local function rtStop()
   rtStartTime = 0
   rtBuf = ""
   if menu then menu:removeFromMenuBar() end
+end
+
+-- Restart the inactivity clock; fires rtStop + a note if no new text arrives.
+local function rtResetIdle()
+  if not (M.realtimeIdleSecs and M.realtimeIdleSecs > 0) then return end
+  if rtIdleTimer then rtIdleTimer:stop() end
+  rtIdleTimer = hs.timer.doAfter(M.realtimeIdleSecs, function()
+    if rtTask then
+      rtStop()
+      hs.alert.show("Realtime auto-closed — no speech for " .. M.realtimeIdleSecs ..
+                    "s.\nPress Fn+F4 to start again.", 4)
+    end
+  end)
 end
 
 local function rtStart()
@@ -246,12 +264,14 @@ local function rtStart()
         end
       end
       rtBuf = rtBuf .. (stdout or "")
+      local pasted = false
       while true do
         local nl = rtBuf:find("\n")
         if not nl then break end
-        rtPaste(rtBuf:sub(1, nl - 1))
+        rtPaste(rtBuf:sub(1, nl - 1)); pasted = true
         rtBuf = rtBuf:sub(nl + 1)
       end
+      if pasted then rtResetIdle() end   -- new text → restart the idle clock
       return true
     end,
     {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
@@ -262,6 +282,7 @@ local function rtStart()
   rtTask:setEnvironment(env)
   rtStartTime = hs.timer.secondsSinceEpoch()
   rtTask:start()
+  rtResetIdle()   -- arm the inactivity auto-close
 end
 
 function M.rtToggle()

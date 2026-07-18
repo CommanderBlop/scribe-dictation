@@ -273,6 +273,8 @@ All settings live at the top of `init.lua`:
 | `M.proxy`           | `nil`               | Proxy, e.g. `"http://127.0.0.1:7890"`; used only when actually listening, else direct |
 | `M.realtimeKey`     | `Fn+F4`             | Realtime streaming toggle (`nil` to disable) |
 | `M.pyProject`       | `~/projects/scribe-dictation` | Path to this repo (has `.venv` + `realtime/`) |
+| `M.realtimeSilenceSecs` | `0.6`           | Pause length that finalizes a realtime segment (lower = faster) |
+| `M.realtimeIdleSecs`| `30`                | Auto-close realtime after N seconds with no new text (`0` = off) |
 
 Leave `M.languageCode = nil` to get the mixed-language auto-detection that makes
 Scribe worth using.

@@ -36,18 +36,20 @@ SAMPLE_RATE = 16000
 CHUNK_BYTES = 3200  # 16-bit mono @16kHz -> 100ms per chunk
 
 
-def build_url(commit_strategy: str, silence_secs: float) -> str:
+def build_url(commit_strategy: str, silence_secs: float, vad_threshold: float) -> str:
     params = {
         "model_id": "scribe_v2_realtime",
         "audio_format": f"pcm_{SAMPLE_RATE}",
         "commit_strategy": commit_strategy,  # "vad" or "manual"
         "include_language_detection": "true",
     }
-    # Lower silence threshold -> the server finalizes (commits) a segment after a
-    # shorter pause -> text appears sooner. API default is 1.5s; we run tighter.
-    # Committed text is still final, so pasting stays safe.
+    # vad_silence_threshold_secs: lower -> commits after a shorter pause -> text
+    #   appears sooner (API default 1.5s). Committed text is final; pasting is safe.
+    # vad_threshold: speech-vs-silence sensitivity (API default 0.4). Higher ->
+    #   ignores low-level ambient sound, so the stream idles/auto-closes sooner.
     if commit_strategy == "vad":
         params["vad_silence_threshold_secs"] = f"{silence_secs:g}"
+        params["vad_threshold"] = f"{vad_threshold:g}"
     return f"{WS_BASE}?" + "&".join(f"{k}={v}" for k, v in params.items())
 
 
@@ -126,6 +128,9 @@ async def main():
     ap.add_argument("--silence", type=float, default=0.6,
                     help="VAD silence (secs) before a segment is finalized; "
                          "lower = faster output, less trailing context (API default 1.5)")
+    ap.add_argument("--vad-threshold", type=float, default=0.4, dest="vad_threshold",
+                    help="speech-vs-silence sensitivity 0-1 (API default 0.4); "
+                         "higher = ignores ambient noise, idles/closes sooner")
     args = ap.parse_args()
 
     key = os.environ.get("ELEVENLABS_API_KEY")
@@ -133,8 +138,10 @@ async def main():
         sys.exit("Set ELEVENLABS_API_KEY first.")
     if args.silence <= 0:
         sys.exit("--silence must be > 0 seconds")
+    if not 0 < args.vad_threshold <= 1:
+        sys.exit("--vad-threshold must be between 0 and 1")
 
-    url = build_url("manual" if args.manual else "vad", args.silence)
+    url = build_url("manual" if args.manual else "vad", args.silence, args.vad_threshold)
     # Capture sox's stderr so a failure (e.g. mic permission denied, no input
     # device) can be reported instead of hanging silently.
     try:

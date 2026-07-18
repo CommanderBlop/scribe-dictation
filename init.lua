@@ -44,6 +44,9 @@ M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your clone
 -- How long a pause finalizes a realtime segment. Lower = text appears sooner
 -- (still final, never revised after paste). API default 1.5s; 0.6 feels live.
 M.realtimeSilenceSecs = 0.6
+-- Speech-vs-silence sensitivity (0-1, API default 0.4). Higher ignores low-level
+-- ambient noise, so realtime idles/auto-closes sooner after you actually stop.
+M.realtimeVadThreshold = 0.4
 -- Auto-close realtime after this many seconds with no new text (you probably
 -- forgot to stop it). Press Fn+F4 to resume. Set to 0 to disable.
 M.realtimeIdleSecs = 30
@@ -276,7 +279,8 @@ local function rtStart()
       return true
     end,
     {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
-     "--silence", tostring(M.realtimeSilenceSecs)})
+     "--silence", tostring(M.realtimeSilenceSecs),
+     "--vad-threshold", tostring(M.realtimeVadThreshold)})
   local env = { ELEVENLABS_API_KEY = M.apiKey, PATH = "/opt/homebrew/bin:/usr/bin:/bin" }
   local px = activeProxy()
   if px then env.HTTP_PROXY = px; env.HTTPS_PROXY = px; env.ALL_PROXY = px end

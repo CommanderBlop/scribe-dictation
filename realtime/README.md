@@ -46,6 +46,11 @@ talk and a `✓` line each time you pause (VAD commit).
   segment. Lower = text appears sooner; it's still the *committed* (final) transcript,
   never a partial, so pasted text is never revised afterwards. Tunable from Hammerspoon
   via `M.realtimeSilenceSecs`.
+- `--vad-threshold <0-1>` (default 0.4 = API default) sets speech-vs-silence
+  sensitivity. Raise it (e.g. 0.5–0.6) in a noisy room so low-level ambient sound isn't
+  treated as speech — this makes Hammerspoon's inactivity auto-close (`M.realtimeIdleSecs`)
+  trigger sooner after you actually stop talking. Too high can miss very quiet speech.
+  Tunable via `M.realtimeVadThreshold`.
 - Realtime is billed at ~$0.39/audio-hour (≈1.8× the batch rate) — see the main README
 
 ## Next step

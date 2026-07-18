@@ -274,6 +274,7 @@ All settings live at the top of `init.lua`:
 | `M.realtimeKey`     | `Fn+F4`             | Realtime streaming toggle (`nil` to disable) |
 | `M.pyProject`       | `~/projects/scribe-dictation` | Path to this repo (has `.venv` + `realtime/`) |
 | `M.realtimeSilenceSecs` | `0.6`           | Pause length that finalizes a realtime segment (lower = faster) |
+| `M.realtimeVadThreshold`| `0.4`           | Speech-vs-silence sensitivity 0-1; higher ignores ambient noise (closes sooner) |
 | `M.realtimeIdleSecs`| `30`                | Auto-close realtime after N seconds with no new text (`0` = off) |
 
 Leave `M.languageCode = nil` to get the mixed-language auto-detection that makes

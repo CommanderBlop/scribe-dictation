@@ -257,6 +257,7 @@ local function rtStart()
     function() rtTask = nil; rtBuf = ""; if menu then menu:removeFromMenuBar() end end,
     function(_, stdout, stderr)       -- stream stdout: paste each complete line
       if stderr and stderr ~= "" then
+        rtResetIdle()   -- heartbeat/activity from the engine → still hearing speech
         for line in stderr:gmatch("[^\r\n]+") do
           if line:find("[Ee]rror") or line:find("rejected") or line:find("Set ELEVEN") then
             hs.alert.show("Realtime: " .. line, 4)

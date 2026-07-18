@@ -26,6 +26,7 @@ import base64
 import json
 import os
 import sys
+import time
 
 import websockets
 
@@ -69,6 +70,7 @@ async def pump_audio(ws, proc):
 async def receive(ws, emit: bool):
     """Surface transcripts. `emit` -> plain finalized lines for piping."""
     last = None
+    last_beat = 0.0
     try:
         async for raw in ws:
             try:
@@ -80,7 +82,14 @@ async def receive(ws, emit: bool):
                 print(f"● session {m.get('session_id', '')[:8]} — speak now",
                       file=sys.stderr, flush=True)
             elif t == "partial_transcript":
-                if not emit:
+                if emit:
+                    # Heartbeat to stderr (throttled ~1/s) so the Hammerspoon
+                    # idle-timer knows speech is still coming between commits.
+                    now = time.monotonic()
+                    if now - last_beat > 1.0:
+                        last_beat = now
+                        print("·", file=sys.stderr, flush=True)
+                else:
                     sys.stdout.write("\r\033[K… " + m.get("text", ""))
                     sys.stdout.flush()
             # The server sends BOTH committed_transcript and *_with_timestamps for

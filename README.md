@@ -115,24 +115,18 @@ cp init.lua ~/.hammerspoon/init.lua
 
 #### 3. Add your API key
 
-Create a key at **[elevenlabs.io](https://elevenlabs.io/) → Profile → API Keys**.
-Give it the **Speech to Text** permission (and **User → Read** too, if you want the
-credit toast). Then open the config and paste your key in:
+Create a key at **[elevenlabs.io](https://elevenlabs.io/) → Profile → API Keys**
+(it needs the **Speech to Text** permission; add **User → Read** for the credit
+toast). Then store it — from the repo folder:
 
 ```bash
-open -e ~/.hammerspoon/init.lua     # opens in TextEdit
+bash set-key.sh
 ```
 
-Replace the placeholder on the `M.apiKey` line:
-
-```lua
-M.apiKey = os.getenv("ELEVENLABS_API_KEY") or "YOUR_ELEVENLABS_API_KEY"
---                                            ^ paste your sk-... key here
-```
-
-> Hammerspoon is a GUI app and **won't** see a key you `export` in a shell, so
-> pasting it into the file is the reliable option — unless you set it up as a
-> system-wide variable, see [Store the key once](#store-the-key-once) below.
+It validates the key and saves it to your macOS **Keychain** (encrypted), which
+`init.lua` reads automatically. **To change the key later, just run `set-key.sh`
+again** — nothing else to touch. (Prefer not to use the Keychain? See
+[Store the key once](#store-the-key-once) for the env-var and hardcode options.)
 
 #### 4. Launch Hammerspoon and grant permissions
 
@@ -179,13 +173,18 @@ Pick one of the two "set once" options below — Keychain is the most secure.
 
 ### Keychain — recommended (encrypted, app-scoped)
 
+**`set-key.sh` already does this for you** (the installer runs it). To do it by
+hand, or to change the key later:
+
 ```bash
-security add-generic-password -a "$USER" -s elevenlabs-api -w sk-your-key-here -U
+bash set-key.sh
+# or directly:
+security add-generic-password -a "$USER" -s elevenlabs-api -T /usr/bin/security -w sk-your-key-here -U
 ```
 
-Leave `M.apiKey` as the placeholder and reload Hammerspoon. The first read pops a
-Keychain prompt — click **Always Allow**. The key is stored encrypted, not in any
-plaintext file. For the **terminal** too (e.g. running the realtime engine by
+Leave `M.apiKey` as the placeholder and reload Hammerspoon. The key is stored
+encrypted, not in any plaintext file (the `-T` flag lets Hammerspoon read it back
+without a prompt). For the **terminal** too (e.g. running the realtime engine by
 hand), derive it from the same source:
 
 ```bash

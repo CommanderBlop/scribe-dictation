@@ -277,3 +277,18 @@ if M.realtimeKey then
 end
 
 hs.alert.show("Scribe loaded — Fn+F5 paragraph · Fn+F4 realtime")
+
+-- Onboarding self-check: if setup is incomplete, say exactly what's missing
+-- instead of failing silently on the first keypress. Only alerts on problems.
+hs.timer.doAfter(0.6, function()
+  local todo = {}
+  if not M.apiKey:match("^sk_") then
+    todo[#todo + 1] = "API key not set — run  bash set-key.sh"
+  end
+  if not hs.accessibilityState() then
+    todo[#todo + 1] = "Accessibility not granted (System Settings → Privacy)"
+  end
+  if #todo > 0 then
+    hs.alert.show("⚠️ Scribe needs setup:\n• " .. table.concat(todo, "\n• "), 8)
+  end
+end)

@@ -41,9 +41,6 @@ fi
 
 # --- 4. install the Hammerspoon config ------------------------------------
 mkdir -p "$HOME/.hammerspoon"
-# preserve an already-saved API key across re-runs / updates
-OLD_KEY=""
-[ -f "$DEST" ] && OLD_KEY="$(sed -n 's/.*or "\(sk_[A-Za-z0-9]*\)".*/\1/p' "$DEST" | head -1)"
 # back up a pre-existing, unrelated Hammerspoon config
 if [ -f "$DEST" ] && ! grep -q "Scribe Dictation\|Scribe v2 push-to-talk" "$DEST"; then
   cp "$DEST" "$DEST.bak.$(date +%s)"; say "Backed up your existing config to $DEST.bak.*"
@@ -52,32 +49,15 @@ cp "$REPO/init.lua" "$DEST"
 # fix sox path on Intel Macs (only if we actually found a different one)
 [ -n "$SOX_PATH" ] && [ "$SOX_PATH" != "/opt/homebrew/bin/sox" ] && \
   sed -i '' "s#/opt/homebrew/bin/sox#$SOX_PATH#g" "$DEST"
-# restore a previously-saved key (only on the assignment line)
-[ -n "$OLD_KEY" ] && sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$OLD_KEY#" "$DEST"
 
-# --- 5. API key ------------------------------------------------------------
-if grep -q "YOUR_ELEVENLABS_API_KEY" "$DEST"; then
-  echo
-  echo "Get a key at  https://elevenlabs.io  ->  Profile  ->  API Keys"
-  echo "(needs the 'Speech to Text' permission; add 'User -> Read' for the credit popup)."
-  printf "Paste your API key here and press Return (or just Return to skip): "
-  read -r KEY < /dev/tty || KEY=""
-  # Validate the format before using it in sed — an ElevenLabs key is sk_ + alnum.
-  # This both catches fat-fingered pastes and prevents sed-injection via stray
-  # delimiters (#, &, \, newlines) in a malformed value.
-  if [ -n "$KEY" ] && ! printf '%s' "$KEY" | grep -qE '^sk_[A-Za-z0-9]+$'; then
-    say "That doesn't look like an ElevenLabs key (expected sk_…). Not saved."
-    KEY=""
-  fi
-  if [ -n "$KEY" ]; then
-    sed -i '' "/^M.apiKey/ s#YOUR_ELEVENLABS_API_KEY#$KEY#" "$DEST"; say "API key saved."
-  else
-    say "No key set — open $DEST later and replace YOUR_ELEVENLABS_API_KEY."
-  fi
+# --- 5. API key (stored in the macOS Keychain, read by init.lua) ----------
+# The key lives in the Keychain, not the config file — so it survives updates
+# and can be reset any time with set-key.sh, independent of everything else.
+if security find-generic-password -s elevenlabs-api -w >/dev/null 2>&1; then
+  say "API key already in your Keychain — keeping it."
+else
+  bash "$REPO/set-key.sh" || say "No key yet — run 'bash $REPO/set-key.sh' any time to set it."
 fi
-
-# the config may now hold your key in plaintext — restrict it to you
-chmod 600 "$DEST" 2>/dev/null || true
 
 # --- 6. optional realtime mode --------------------------------------------
 printf "Enable realtime mode too (Fn+F4, live dictation)? [y/N]: "

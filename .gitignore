@@ -8,3 +8,7 @@ init.local.lua
 .venv/
 __pycache__/
 *.pyc
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/

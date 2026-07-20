@@ -6,6 +6,17 @@ System-wide push-to-talk dictation for macOS that replaces Apple Dictation with
 Press a hotkey, speak, and your words are transcribed and pasted at the cursor —
 in any app (Claude desktop, browser, editor, anywhere a text field is focused).
 
+## Why this exists
+
+It was built for two specific needs:
+
+1. **Verbatim transcription for interview practice and debriefs.** No filler-word
+   stripping, no rewriting — you see exactly how you actually spoke, because delivery
+   matters as much as content when you're thinking out loud under pressure. Most
+   dictation tools clean up your speech by default; this one deliberately doesn't.
+2. **Frictionless mixed Chinese/English dictation** for dumping ideas and debriefing
+   at the speed of thought, without a tool fighting your choice of language.
+
 **Why Scribe v2?** Its smart language detection handles **mixed-language speech**
 out of the box. You can speak Chinese and English in the same sentence and it
 transcribes both correctly — something Apple Dictation forces you to fight with a
@@ -40,13 +51,35 @@ Fn+F4: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► past
 
 - macOS (tested on Apple Silicon)
 - [Homebrew](https://brew.sh/)
-- An [ElevenLabs](https://elevenlabs.io/) account + API key
+- An [ElevenLabs](https://elevenlabs.io/) account + API key (2-min setup below)
+
+---
+
+## Getting your ElevenLabs API key
+
+The one part of setup that happens outside this tool — about 2 minutes:
+
+1. Create an account at **[elevenlabs.io](https://elevenlabs.io/)**.
+2. Open **Profile → API Keys** (top-right avatar menu).
+3. Click **Create API Key**.
+4. Enable the **Speech to Text** permission (required). Optionally also enable
+   **User → Read** — only for the little "credits left" popup after each dictation.
+5. **Copy the key** (it starts with `sk_`). You'll paste it once, during install.
+
+> **Cost:** the **$6/month Starter plan** (30,000 credits ≈ 27 hours of transcription)
+> is plenty for heavy daily use. The free tier is fine for trying it out.
+
+<!-- screenshots to add later:
+     ![Create an API key](assets/apikey-create.png)
+     ![Set the Speech to Text permission](assets/apikey-permissions.png) -->
 
 ---
 
 ## Install
 
 ### Option A — one command (recommended) ⭐
+
+First, [get your API key](#getting-your-elevenlabs-api-key) (above) — keep it handy.
 
 1. **Open Terminal:** press `⌘ Space`, type `Terminal`, press Return.
 2. **Paste this line, press Return,** and follow the prompts:
@@ -55,24 +88,28 @@ Fn+F4: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► past
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/CommanderBlop/scribe-dictation/main/install.sh)"
 ```
 
-It installs everything (Homebrew, sox, Hammerspoon, the tool itself), asks you to
-**paste your ElevenLabs API key**, and opens the two macOS permission screens.
+It installs everything (Homebrew, sox, Hammerspoon, the tool), asks you to **paste
+your API key**, opens the two macOS permission screens, and reloads Hammerspoon for you.
 
-Then do the only two things macOS won't let a script do for you:
+The one thing macOS won't let a script do — **flip two switches** (turn on
+"Hammerspoon" under each):
 
-- **Turn on "Hammerspoon"** under both **Accessibility** and **Microphone** in the
-  Settings windows that pop up.
-- Click the **🔨** in your menu bar → **Reload Config**.
+- **Accessibility** — lets it paste text at your cursor. *That's the only thing it's used for.*
+- **Microphone** — lets `sox` record your voice. *Nothing else is accessed.*
 
-That's it — click into any text box, press **Fn+F5**, talk, press **Fn+F5** again.
+**Then test it (10 seconds):** click into any text box, press **Fn+F5** (a 🔴 appears
+in the menu bar), say a sentence, press **Fn+F5** again — your words land at the cursor.
 
-> Need an API key first? Get one free-ish at **[elevenlabs.io](https://elevenlabs.io/)
-> → Profile → API Keys** (give it the *Speech to Text* permission; add *User → Read*
-> for the credit popup). The installer will ask you to paste it.
+> On most Macs the function row is media keys, so **single F5 is Apple Dictation** —
+> you press **Fn+F5**. If the first press seems to do nothing, see
+> [Troubleshooting](#troubleshooting).
 
 ---
 
-### Option B — manual, step by step
+<details>
+<summary><b>Option B — manual, step by step</b> (click to expand)</summary>
+
+<br>
 
 Prefer to see every step (or the one-liner failed)? Same result, by hand. Steps 1–2
 are copy-paste; 3–4 need a few clicks. Paragraph mode (Fn+F5) is all you need to
@@ -137,10 +174,10 @@ open -a Hammerspoon
 Grant Hammerspoon two permissions in **System Settings → Privacy & Security**
 (toggle it on under each; add it with `+` if it's not listed):
 
-| Permission        | Why                                            |
-|-------------------|------------------------------------------------|
-| **Accessibility** | Simulate ⌘V paste and capture global hotkeys   |
-| **Microphone**    | `sox` records your mic (prompts on first use)  |
+| Permission        | Why (and nothing more)                                   |
+|-------------------|----------------------------------------------------------|
+| **Accessibility** | Simulate ⌘V to paste text at your cursor — the only use  |
+| **Microphone**    | Let `sox` record your voice (prompts on first use)       |
 
 #### 5. Reload and dictate
 
@@ -158,9 +195,14 @@ the cursor.
 For live, segment-by-segment dictation on **Fn+F4**, do the one-time Python setup in
 the [Realtime mode](#realtime-mode-fnf4) section below.
 
+</details>
+
 ---
 
-## Store the key once
+<details>
+<summary><b>Store the key once</b> — env-var / Keychain-by-hand / hardcode options (click to expand)</summary>
+
+<br>
 
 Instead of hardcoding the key, keep it in **one place**. `init.lua` resolves it at
 load, first match wins:
@@ -226,6 +268,8 @@ at launch). Shell side: `export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLAB
 > process you run can read it with `launchctl getenv`, and the plist holds it in
 > plaintext. That's broader exposure than the Keychain or a `chmod 600` init.lua.
 > Prefer the Keychain unless you specifically need a shared env var.
+
+</details>
 
 ---
 

@@ -70,25 +70,41 @@ if [ "$RT" = "y" ] || [ "$RT" = "Y" ]; then
   say "Realtime ready."
 fi
 
-# --- 7. launch + open the permission panes --------------------------------
-open -a Hammerspoon || true
+# --- 7. explain + open permission panes, then reload Hammerspoon ----------
+say "Opening the two macOS permission screens. Here's why each is needed:"
+echo "   • Accessibility — lets Scribe simulate ⌘V to paste text at your cursor. That's its only use."
+echo "   • Microphone    — lets sox record your voice. Nothing else is accessed."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" || true
 sleep 1
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone" || true
 
+# Load the config so there's no manual "Reload Config" step. Prefer the hs CLI
+# if it's installed; otherwise relaunch the app (it reloads config on launch).
+if command -v hs >/dev/null 2>&1 && hs -c "hs.reload()" >/dev/null 2>&1; then
+  say "Reloaded Hammerspoon."
+else
+  osascript -e 'quit app "Hammerspoon"' >/dev/null 2>&1 || true
+  sleep 1
+  open -a Hammerspoon || true
+fi
+
 cat <<'DONE'
 
 ============================================================
- Two last clicks (macOS requires these by hand):
+ Almost there — flip two switches (macOS requires this by hand):
 
-   1. In the Settings windows that just opened, switch ON
-      "Hammerspoon" under BOTH Accessibility and Microphone.
+   In the Settings windows that just opened, turn ON
+   "Hammerspoon" under BOTH Accessibility and Microphone.
 
-   2. Click the hammer icon (🔨) in your top menu bar
-      -> Reload Config.
+ Then test it (about 10 seconds):
+   1. Click into any text box (Claude, a browser, Notes…)
+   2. Press  Fn+F5    (a 🔴 appears in the menu bar)
+   3. Say a sentence
+   4. Press  Fn+F5    again  →  your words appear at the cursor
 
- Then click into any text box (Claude, browser, Notes…),
- press  Fn+F5 , say something, press  Fn+F5  again.
- Your words appear where the cursor is.  🎙️
+ Heads up: on most Macs single F5 is Apple Dictation — use Fn+F5.
+ If the first press does nothing, see the README's Troubleshooting.
+
+ (If Scribe ever seems inactive: menu-bar 🔨 → Reload Config.)
 ============================================================
 DONE

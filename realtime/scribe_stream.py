@@ -10,7 +10,7 @@ ElevenLabs realtime speech-to-text WebSocket, and surfaces transcripts:
 Two output modes:
   default   human view: '…' interim + '✓ text [lang]' finalized
   --emit    machine view: finalized text only, one plain line each, flushed.
-            Used by the Hammerspoon Fn+F4 binding, which pastes each line.
+            Used by the Hammerspoon Fn+F5 binding, which pastes each line.
 
 Usage:
     export ELEVENLABS_API_KEY=sk-...
@@ -25,13 +25,14 @@ import asyncio
 import base64
 import json
 import os
+import shutil
 import sys
 import time
 
 import websockets
 
 WS_BASE = "wss://api.elevenlabs.io/v1/speech-to-text/realtime"
-SOX = "/opt/homebrew/bin/sox"
+SOX = os.environ.get("SCRIBE_SOX_PATH") or shutil.which("sox") or "/opt/homebrew/bin/sox"
 SAMPLE_RATE = 16000
 CHUNK_BYTES = 3200  # 16-bit mono @16kHz -> 100ms per chunk
 

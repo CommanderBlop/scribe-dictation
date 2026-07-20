@@ -1,7 +1,7 @@
 # Scribe v2 Realtime — streaming prototype
 
-Local terminal prototype for streaming dictation, before wiring it into the
-Hammerspoon hotkey + paste flow.
+Small Python engine behind the Hammerspoon **Fn+F5** realtime hotkey. It can also
+run directly in a terminal for testing.
 
 It captures the mic with `sox` (raw PCM, no extra audio deps), streams to
 `wss://api.elevenlabs.io/v1/speech-to-text/realtime`, and prints transcripts live:

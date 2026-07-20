@@ -1,7 +1,7 @@
 -- ============================================================
 --  Scribe Dictation — push-to-talk for macOS (Hammerspoon)
---  Fn+F5  paragraph mode : record -> ElevenLabs Scribe v2 -> paste whole text
---  Fn+F4  realtime mode  : stream mic, paste each segment as you speak
+--  Fn+F5  realtime mode  : stream mic, paste each segment as you speak
+--  Fn+F4  paragraph mode : record -> ElevenLabs Scribe v2 -> paste whole text
 --
 --  Why: replaces Apple Dictation with ElevenLabs Scribe v2, whose smart
 --  language detection handles mixed-language speech (e.g. Chinese + English
@@ -22,7 +22,7 @@ M.modelId  = "scribe_v2"
 M.sox      = "/opt/homebrew/bin/sox"        -- `which sox` (Apple Silicon default)
 M.recPath  = "/tmp/scribe_rec.wav"
 M.maxSecs  = 120          -- safety auto-stop while recording (paragraph mode)
-M.toggleKey = { mods = {}, key = "f5" }   -- paragraph mode; media row: press Fn+F5
+M.toggleKey = { mods = {}, key = "f4" }   -- paragraph mode; media row: press Fn+F4
 -- Optional: bias language. nil = auto-detect (best for mixed speech).
 M.languageCode = nil      -- e.g. "zh", "en", or nil for auto
 -- Show a credit toast after each transcription. Requires the API key to have
@@ -37,9 +37,9 @@ M.creditsPerMinuteRealtime = 33.2
 -- shell's proxy vars, so set this if your network needs one (e.g. Clash on
 -- 127.0.0.1:7890) to avoid timeouts. nil = direct connection.
 M.proxy = nil             -- e.g. "http://127.0.0.1:7890"
--- Realtime streaming mode (Fn+F4): pastes each finalized segment as you speak,
+-- Realtime streaming mode (Fn+F5): pastes each finalized segment as you speak,
 -- via the Python engine in realtime/scribe_stream.py (see realtime/README).
-M.realtimeKey = { mods = {}, key = "f4" }            -- nil to disable
+M.realtimeKey = { mods = {}, key = "f5" }            -- nil to disable
 M.pyProject   = os.getenv("HOME") .. "/projects/scribe-dictation"  -- your cloned repo (.venv + realtime/)
 -- How long a pause finalizes a realtime segment. Lower = text appears sooner
 -- (still final, never revised after paste). API default 1.5s; 0.6 feels live.
@@ -48,7 +48,7 @@ M.realtimeSilenceSecs = 0.6
 -- ambient noise, so realtime idles/auto-closes sooner after you actually stop.
 M.realtimeVadThreshold = 0.4
 -- Auto-close realtime after this many seconds with no new text (you probably
--- forgot to stop it). Press Fn+F4 to resume. Set to 0 to disable.
+-- forgot to stop it). Press Fn+F5 to resume. Set to 0 to disable.
 M.realtimeIdleSecs = 30
 -- ----------------------------
 
@@ -205,7 +205,7 @@ function M.toggle()
   -- ignore presses while "working"
 end
 
--- ---------- realtime streaming (Fn+F4) ----------
+-- ---------- realtime streaming (Fn+F5) ----------
 -- Launches the Python engine; each finalized segment it prints is pasted at
 -- the cursor as you speak. 🟢 in the menu bar while streaming.
 local function rtPaste(line)
@@ -239,7 +239,7 @@ local function rtResetIdle()
     if rtTask then
       rtStop()
       hs.alert.show("Realtime auto-closed — no speech for " .. M.realtimeIdleSecs ..
-                    "s.\nPress Fn+F4 to start again.", 4)
+                    "s.\nPress Fn+F5 to start again.", 4)
     end
   end)
 end
@@ -281,7 +281,11 @@ local function rtStart()
     {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
      "--silence", tostring(M.realtimeSilenceSecs),
      "--vad-threshold", tostring(M.realtimeVadThreshold)})
-  local env = { ELEVENLABS_API_KEY = M.apiKey, PATH = "/opt/homebrew/bin:/usr/bin:/bin" }
+  local env = {
+    ELEVENLABS_API_KEY = M.apiKey,
+    SCRIBE_SOX_PATH = M.sox,
+    PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+  }
   local px = activeProxy()
   if px then env.HTTP_PROXY = px; env.HTTPS_PROXY = px; env.ALL_PROXY = px end
   rtTask:setEnvironment(env)
@@ -302,7 +306,7 @@ if M.realtimeKey then
   hs.hotkey.bind(M.realtimeKey.mods, M.realtimeKey.key, M.rtToggle)
 end
 
-hs.alert.show("Scribe loaded — Fn+F5 paragraph · Fn+F4 realtime")
+hs.alert.show("Scribe loaded — Fn+F5 realtime · Fn+F4 paragraph")
 
 -- Onboarding self-check: if setup is incomplete, say exactly what's missing
 -- instead of failing silently on the first keypress. Only alerts on problems.
@@ -313,6 +317,12 @@ hs.timer.doAfter(0.6, function()
   end
   if not hs.accessibilityState() then
     todo[#todo + 1] = "Accessibility not granted (System Settings → Privacy)"
+  end
+  if not hs.fs.attributes(M.sox) then
+    todo[#todo + 1] = "sox not found at " .. M.sox .. " — rerun install.sh"
+  end
+  if M.realtimeKey and not hs.fs.attributes(M.pyProject .. "/.venv/bin/python") then
+    todo[#todo + 1] = "Realtime not installed — rerun install.sh"
   end
   if #todo > 0 then
     hs.alert.show("⚠️ Scribe needs setup:\n• " .. table.concat(todo, "\n• "), 8)

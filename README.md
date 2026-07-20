@@ -25,19 +25,18 @@ fixed language setting.
 It's a single [Hammerspoon](https://www.hammerspoon.org/) config file plus `sox`
 for recording. Two modes:
 
-- **Fn+F5 — paragraph mode** (default): record, then transcribe the whole
+- **Fn+F5 — realtime mode** (default): stream the mic to Scribe v2 Realtime over a
+  WebSocket and paste each segment as you pause.
+- **Fn+F4 — paragraph mode** (fallback): record, then transcribe the whole
   utterance at once. Simple and reliable; text appears a moment after you stop.
-- **Fn+F4 — realtime mode** (optional): stream the mic to Scribe v2 Realtime over a
-  WebSocket and paste each segment as you pause. Needs a small Python engine —
-  see [realtime/README.md](realtime/README.md).
 
 ---
 
 ## How it works
 
 ```
-Fn+F5: hotkey ─► record mic (sox) ─► Scribe v2 (REST) ──────► paste whole text
-Fn+F4: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► paste each segment
+Fn+F5: hotkey ─► stream mic (sox) ─► Scribe v2 Realtime (WS) ─► paste each segment
+Fn+F4: hotkey ─► record mic (sox) ─► Scribe v2 (REST) ──────► paste whole text
 ```
 
 1. Hotkey → `sox` captures your mic.
@@ -97,8 +96,9 @@ The one thing macOS won't let a script do — **flip two switches** (turn on
 - **Accessibility** — lets it paste text at your cursor. *That's the only thing it's used for.*
 - **Microphone** — lets `sox` record your voice. *Nothing else is accessed.*
 
-**Then test it (10 seconds):** click into any text box, press **Fn+F5** (a 🔴 appears
-in the menu bar), say a sentence, press **Fn+F5** again — your words land at the cursor.
+**Then test it (10 seconds):** click into any text box, press **Fn+F5** (a 🟢 appears
+in the menu bar), and start speaking. Each finalized segment lands at the cursor as
+you pause; press **Fn+F5** again to stop.
 
 > On most Macs the function row is media keys, so **single F5 is Apple Dictation** —
 > you press **Fn+F5**. If the first press seems to do nothing, see
@@ -112,8 +112,8 @@ in the menu bar), say a sentence, press **Fn+F5** again — your words land at t
 <br>
 
 Prefer to see every step (or the one-liner failed)? Same result, by hand. Steps 1–2
-are copy-paste; 3–4 need a few clicks. Paragraph mode (Fn+F5) is all you need to
-start — realtime (Fn+F4) is the optional add-on in step 6.
+are copy-paste; 3–4 need a few clicks. Realtime mode (Fn+F5) needs the small Python
+setup in step 6; paragraph mode (Fn+F4) works with only Hammerspoon and sox.
 
 > **Open Terminal:** press `⌘ Space`, type "Terminal", hit Return.
 
@@ -183,17 +183,17 @@ Grant Hammerspoon two permissions in **System Settings → Privacy & Security**
 
 Click the Hammerspoon **🔨** in the menu bar → **Reload Config**. You'll see a
 "Scribe loaded" notification. Now focus any text field (Claude, browser, notes…),
-press **Fn+F5**, speak a sentence, and press **Fn+F5** again — the text is pasted at
+press **Fn+F4**, speak a sentence, and press **Fn+F4** again — the text is pasted at
 the cursor.
 
-> 🔴 = recording, ⏳ = transcribing, nothing = idle. On a media-key function row,
-> **single F5 is Apple Dictation**; this tool deliberately binds **Fn+F5** so the two
-> don't clash (see "About the Fn+F5 key" below).
+> 🔴 = recording, ⏳ = transcribing, nothing = idle. This is the paragraph fallback;
+> realtime uses Fn+F5 and shows 🟢 while it is streaming.
 
-#### 6. (Optional) Enable realtime mode
+#### 6. Enable realtime mode
 
-For live, segment-by-segment dictation on **Fn+F4**, do the one-time Python setup in
-the [Realtime mode](#realtime-mode-fnf4) section below.
+For live, segment-by-segment dictation on **Fn+F5**, do the one-time Python setup in
+the [Realtime mode](#realtime-mode-fnf5) section below. The recommended one-command
+installer does this automatically.
 
 </details>
 
@@ -277,8 +277,8 @@ at launch). Shell side: `export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLAB
 
 | Action                          | Default  | Config field    |
 |---------------------------------|----------|-----------------|
-| Paragraph mode (record → paste) | `Fn+F5`  | `M.toggleKey`   |
-| Realtime mode (stream → paste)  | `Fn+F4`  | `M.realtimeKey` |
+| Realtime mode (stream → paste)  | `Fn+F5`  | `M.realtimeKey` |
+| Paragraph mode (record → paste) | `Fn+F4`  | `M.toggleKey`   |
 
 Press once to start, press again to stop. The two modes are mutually exclusive —
 while one is active, the other key is ignored. 🔴/⏳ shows in the menu bar for
@@ -295,7 +295,8 @@ Prefer a bare F5 (no Fn)? Turn on *System Settings → Keyboard → Keyboard Sho
 → Function Keys → "Use F1, F2, etc. as standard function keys"*, and optionally turn
 off Apple Dictation so single F5 is free.
 
-Want a different key/combo? Edit `M.toggleKey`, e.g. `{ mods = {"cmd","alt"}, key = "d" }`.
+Want a different key/combo? Edit `M.realtimeKey` or `M.toggleKey`, e.g.
+`{ mods = {"cmd","alt"}, key = "d" }`.
 
 ---
 
@@ -309,13 +310,13 @@ All settings live at the top of `init.lua`:
 | `M.modelId`      | `"scribe_v2"`          | `scribe_v1` also available |
 | `M.sox`          | `/opt/homebrew/bin/sox`| Path to the `sox` binary |
 | `M.maxSecs`         | `120`               | Auto-stop after N seconds |
-| `M.toggleKey`       | `Fn+F5`             | Press to start / press again to stop |
+| `M.toggleKey`       | `Fn+F4`             | Paragraph mode; press to start / press again to stop |
 | `M.languageCode`    | `nil`               | `nil` = auto-detect; or force `"zh"`, `"en"`, … |
 | `M.showCredits`     | `true`              | Show a credit toast after each transcription |
 | `M.creditsPerMinute`| `18.7`              | Credits/min for paragraph mode estimate (plan-dependent) |
 | `M.creditsPerMinuteRealtime`| `33.2`      | Credits/min for realtime estimate (realtime is ~1.77× pricier) |
 | `M.proxy`           | `nil`               | Proxy, e.g. `"http://127.0.0.1:7890"`; used only when actually listening, else direct |
-| `M.realtimeKey`     | `Fn+F4`             | Realtime streaming toggle (`nil` to disable) |
+| `M.realtimeKey`     | `Fn+F5`             | Realtime streaming toggle (`nil` to disable) |
 | `M.pyProject`       | `~/projects/scribe-dictation` | Path to this repo (has `.venv` + `realtime/`) |
 | `M.realtimeSilenceSecs` | `0.6`           | Pause length that finalizes a realtime segment (lower = faster) |
 | `M.realtimeVadThreshold`| `0.4`           | Speech-vs-silence sensitivity 0-1; higher ignores ambient noise (closes sooner) |
@@ -326,9 +327,9 @@ Scribe worth using.
 
 ---
 
-## Realtime mode (Fn+F4)
+## Realtime mode (Fn+F5)
 
-Paragraph mode (Fn+F5) works with nothing but Hammerspoon + sox. Realtime mode adds
+Paragraph mode (Fn+F4) works with nothing but Hammerspoon + sox. Realtime mode adds
 live, segment-by-segment dictation by streaming to **Scribe v2 Realtime** over a
 WebSocket. It uses a small Python engine, so it needs a one-time venv:
 
@@ -338,8 +339,8 @@ python3 -m venv .venv
 .venv/bin/pip install -r realtime/requirements.txt
 ```
 
-Point `M.pyProject` at that folder. Then press **Fn+F4** to start streaming (🟢),
-speak, and each finalized segment is pasted as you pause; press Fn+F4 again to stop.
+Point `M.pyProject` at that folder. Then press **Fn+F5** to start streaming (🟢),
+speak, and each finalized segment is pasted as you pause; press Fn+F5 again to stop.
 Details and troubleshooting: [realtime/README.md](realtime/README.md).
 
 > Realtime is billed at **$0.39/audio-hour** (≈1.77× paragraph mode). The credit
@@ -394,7 +395,7 @@ Open the Hammerspoon **Console** (menu-bar hammer → Console) to see logs.
 | `Scribe API: ...` alert | Bad/expired API key, or out of credits |
 | "empty/unexpected response" | Check Console for the raw response printed below it |
 | `curl failed (28)` timeout | Network needs a proxy — Hammerspoon (GUI) doesn't see your shell's proxy vars. Set `M.proxy` |
-| Fn+F5 does nothing | Some keyboards differ — remap `M.toggleKey` to e.g. `⌘⌥D` |
+| Fn+F5 does nothing | Confirm the realtime venv exists, then try remapping `M.realtimeKey` to e.g. `⌘⌥D` |
 
 ---
 

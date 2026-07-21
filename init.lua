@@ -257,14 +257,17 @@ local function rtStart()
   rtBuf = ""
   if menu then menu:returnToMenuBar(); menu:setTitle("🟢") end
   rtTask = hs.task.new(M.pyProject .. "/.venv/bin/python",
-    function() rtTask = nil; rtBuf = ""; if menu then menu:removeFromMenuBar() end end,
+    function()  -- on exit: clean up (idle timer too, in case it died on its own)
+      rtTask = nil; rtBuf = ""
+      if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
+      if menu then menu:removeFromMenuBar() end
+    end,
     function(_, stdout, stderr)       -- stream stdout: paste each complete line
       if stderr and stderr ~= "" then
-        rtResetIdle()   -- heartbeat/activity from the engine → still hearing speech
+        rtResetIdle()   -- any engine chatter (heartbeat) → still hearing speech
         for line in stderr:gmatch("[^\r\n]+") do
-          if line:find("[Ee]rror") or line:find("rejected") or line:find("Set ELEVEN") then
-            hs.alert.show("Realtime: " .. line, 4)
-          end
+          local msg = line:match("^SCRIBE%-ERR (.+)")   -- clean, tagged error only
+          if msg then hs.alert.show("Realtime: " .. msg, 6) end
         end
       end
       rtBuf = rtBuf .. (stdout or "")

@@ -37,6 +37,12 @@ SAMPLE_RATE = 16000
 CHUNK_BYTES = 3200  # 16-bit mono @16kHz -> 100ms per chunk
 
 
+def die(msg: str) -> None:
+    """Print a one-line, Hammerspoon-recognizable fatal error, then exit."""
+    print(f"SCRIBE-ERR {msg}", file=sys.stderr, flush=True)
+    sys.exit(1)
+
+
 def build_url(commit_strategy: str, silence_secs: float, vad_threshold: float) -> str:
     params = {
         "model_id": "scribe_v2_realtime",
@@ -114,7 +120,8 @@ async def receive(ws, emit: bool):
             elif t == "committed_transcript":
                 pass  # ignored — duplicate of the with_timestamps message
             elif t and "error" in t:
-                print(f"[server {t}] {m.get('message') or m}", file=sys.stderr, flush=True)
+                detail = m.get("error") or m.get("message") or t
+                print(f"SCRIBE-ERR server: {detail}", file=sys.stderr, flush=True)
     except websockets.ConnectionClosed as e:
         if e.code not in (1000, 1001):  # not a normal close
             print(f"[connection closed {e.code}] {e.reason or ''}".rstrip(),
@@ -136,11 +143,11 @@ async def main():
 
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
-        sys.exit("Set ELEVENLABS_API_KEY first.")
+        die("no API key found. Run  bash set-key.sh  to store one.")
     if args.silence <= 0:
-        sys.exit("--silence must be > 0 seconds")
+        die("--silence must be > 0 seconds")
     if not 0 < args.vad_threshold <= 1:
-        sys.exit("--vad-threshold must be between 0 and 1")
+        die("--vad-threshold must be between 0 and 1")
 
     url = build_url("manual" if args.manual else "vad", args.silence, args.vad_threshold)
     # Capture sox's stderr so a failure (e.g. mic permission denied, no input
@@ -152,7 +159,7 @@ async def main():
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
     except (FileNotFoundError, PermissionError) as e:
-        sys.exit(f"Could not start sox ({SOX}): {e}")
+        die(f"could not start sox ({SOX}): {e}")
 
     try:
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
@@ -171,7 +178,17 @@ async def main():
                 if exc:
                     raise exc
     except websockets.InvalidStatus as e:
-        sys.exit(f"WebSocket rejected (check your API key / permissions): {e}")
+        code = getattr(getattr(e, "response", None), "status_code", None)
+        if code == 401:
+            die("authentication failed — check your API key and its Speech-to-Text permission.")
+        die(f"server rejected the connection (HTTP {code or '?'}).")
+    except (TimeoutError, OSError) as e:
+        die(f"can't reach the realtime server ({e.__class__.__name__}). Behind a proxy or in a "
+            "restricted region? Set M.proxy in init.lua. Fn+F4 paragraph mode still works.")
+    except websockets.WebSocketException as e:
+        die(f"WebSocket failed ({e.__class__.__name__}).")
+    except Exception as e:  # never surface a raw multi-line traceback
+        die(f"{e.__class__.__name__}: {e}")
     finally:
         if proc.returncode is None:
             proc.terminate()

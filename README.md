@@ -69,9 +69,15 @@ The one part of setup that happens outside this tool — about 2 minutes:
 > **Cost:** the **$6/month Starter plan** (30,000 credits ≈ 27 hours of transcription)
 > is plenty for heavy daily use. The free tier is fine for trying it out.
 
-<!-- screenshots to add later:
-     ![Create an API key](assets/apikey-create.png)
-     ![Set the Speech to Text permission](assets/apikey-permissions.png) -->
+**The API Keys page** (Developers → API Keys) — click **Create Key**:
+
+<img src="assets/apikey-create.png" alt="ElevenLabs API Keys page with the Create Key button" width="680">
+
+**Set the key's permissions** — turn on **Speech to Text** (required); add **User → Read**
+too if you want the "credits left" popup after each dictation:
+
+<img src="assets/apikey-permissions.png" alt="Speech to Text set to Access" width="420">
+<img src="assets/apikey-user.png" alt="User set to Read (optional)" width="420">
 
 ---
 

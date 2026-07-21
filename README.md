@@ -1,5 +1,9 @@
 # Scribe Dictation
 
+<p align="center">
+  <img src="assets/f5-hero.png" alt="A better dictation tool — Same key, Multilingual, Verbatim. The Mac F5 key highlighted as a microphone." width="820">
+</p>
+
 System-wide push-to-talk dictation for macOS that replaces Apple Dictation with
 **[ElevenLabs Scribe v2](https://elevenlabs.io/realtime-speech-to-text)**.
 

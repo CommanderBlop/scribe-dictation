@@ -33,10 +33,11 @@ M.showCredits = true
 M.creditsPerMinute = 18.7
 -- Realtime is billed at $0.39/hr (≈1.77× batch) → ~33.2/min on Starter.
 M.creditsPerMinuteRealtime = 33.2
--- Route curl through a proxy. Hammerspoon (a GUI app) doesn't inherit your
--- shell's proxy vars, so set this if your network needs one (e.g. Clash on
--- 127.0.0.1:7890) to avoid timeouts. nil = direct connection.
-M.proxy = nil             -- e.g. "http://127.0.0.1:7890"
+-- Route requests through a proxy (Hammerspoon, a GUI app, doesn't inherit your
+-- shell's proxy vars). "auto" follows the macOS system proxy (whatever tool/port
+-- is set, read fresh each time); or give an explicit URL; nil = direct. Handy in
+-- regions where the realtime WebSocket needs a proxy but batch would work direct.
+M.proxy = "auto"          -- "auto" | nil | "http://127.0.0.1:7890"
 -- Realtime streaming mode (Fn+F5): pastes each finalized segment as you speak,
 -- via the Python engine in realtime/scribe_stream.py (see realtime/README).
 M.realtimeKey = { mods = {}, key = "f5" }            -- nil to disable
@@ -64,15 +65,35 @@ if not M.apiKey:match("^sk_") and M.keychainService and M.keychainService:match(
   end
 end
 
--- Use the proxy only if it's actually listening; otherwise go direct. Handles a
--- proxy app (e.g. Clash) being toggled on/off without breaking transcription.
+-- Read the macOS system proxy so "auto" follows whatever tool/port is currently
+-- configured, without hardcoding. HTTPS preferred, then HTTP, then SOCKS.
+local function systemProxyURL()
+  local out = hs.execute("/usr/sbin/scutil --proxy 2>/dev/null") or ""
+  local function field(k) return (out:match(k .. "%s*:%s*([^\n]+)") or ""):gsub("%s+$", "") end
+  local function enabled(k) return field(k):match("^1") ~= nil end
+  local function url(scheme, hk, pk)
+    local h, p = field(hk), field(pk)
+    if h:match("^[%w%.%-]+$") and p:match("^%d+$") then return scheme .. "://" .. h .. ":" .. p end
+  end
+  if enabled("HTTPSEnable") then return url("http",   "HTTPSProxy", "HTTPSPort") end
+  if enabled("HTTPEnable")  then return url("http",   "HTTPProxy",  "HTTPPort")  end
+  if enabled("SOCKSEnable") then return url("socks5", "SOCKSProxy", "SOCKSPort") end
+  return nil
+end
+
+-- Resolve M.proxy to a usable URL: "auto" follows the system proxy; then only
+-- use it if the port is actually listening, else go direct. Adapts to a proxy
+-- app being toggled on/off without breaking transcription.
 local function activeProxy()
   if not M.proxy then return nil end
+  local url
+  if M.proxy == "auto" then url = systemProxyURL() else url = M.proxy end
+  if not url then return nil end
   -- host restricted to safe hostname/IP chars so it can't inject into the shell.
-  local host, port = M.proxy:match("://([%w%.%-]+):(%d+)")
-  if not host then return M.proxy end   -- odd format → trust config (curl -x / env are not shell)
+  local host, port = url:match("://([%w%.%-]+):(%d+)")
+  if not host then return url end   -- odd format → trust it (curl -x / env are not shell)
   local _, ok = hs.execute("/usr/bin/nc -z -G1 " .. host .. " " .. port .. " >/dev/null 2>&1")
-  return ok and M.proxy or nil
+  return ok and url or nil
 end
 
 local recTask, watchdog

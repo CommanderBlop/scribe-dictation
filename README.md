@@ -317,7 +317,7 @@ All settings live at the top of `init.lua`:
 | `M.showCredits`     | `true`              | Show a credit toast after each transcription |
 | `M.creditsPerMinute`| `18.7`              | Credits/min for paragraph mode estimate (plan-dependent) |
 | `M.creditsPerMinuteRealtime`| `33.2`      | Credits/min for realtime estimate (realtime is ~1.77× pricier) |
-| `M.proxy`           | `nil`               | Proxy, e.g. `"http://127.0.0.1:7890"`; used only when actually listening, else direct |
+| `M.proxy`           | `"auto"`            | `"auto"` follows the macOS system proxy; or an explicit `"http://127.0.0.1:7890"`; or `nil` for direct. Used only when the proxy is actually listening, else direct |
 | `M.realtimeKey`     | `Fn+F5`             | Realtime streaming toggle (`nil` to disable) |
 | `M.pyProject`       | `~/projects/scribe-dictation` | Path to this repo (has `.venv` + `realtime/`) |
 | `M.realtimeSilenceSecs` | `0.6`           | Pause length that finalizes a realtime segment (lower = faster) |
@@ -397,7 +397,7 @@ Open the Hammerspoon **Console** (menu-bar hammer → Console) to see logs.
 | `Scribe API: ...` alert | Bad/expired API key, or out of credits |
 | "empty/unexpected response" | Check Console for the raw response printed below it |
 | `curl failed (28)` timeout | Network needs a proxy — Hammerspoon (GUI) doesn't see your shell's proxy vars. Set `M.proxy` |
-| **Realtime (Fn+F5) won't connect, but paragraph (Fn+F4) works** | Common behind a proxy / in a restricted region (e.g. mainland China): realtime uses a WebSocket that a direct connection may block, while the batch REST call still gets through. Set `M.proxy` to your local proxy (e.g. `"http://127.0.0.1:7890"`) so realtime routes through it too. Fn+F4 is the reliable fallback. |
+| **Realtime (Fn+F5) won't connect, but paragraph (Fn+F4) works** | Common behind a proxy / in a restricted region (e.g. mainland China): realtime uses a WebSocket that a direct connection may block, while batch REST still gets through. `M.proxy = "auto"` (the default) follows your macOS **system proxy** automatically. If your proxy runs in TUN/transparent mode (no system proxy set — e.g. some Clash setups), scutil can't see it: set an explicit `M.proxy = "http://127.0.0.1:7890"`. Fn+F4 is the reliable fallback. |
 | Fn+F5 does nothing at all | Confirm the realtime venv exists (`~/projects/scribe-dictation/.venv`); on a media-key keyboard use **Fn**+F5, or remap `M.realtimeKey` |
 
 ---

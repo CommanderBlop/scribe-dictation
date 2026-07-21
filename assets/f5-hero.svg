@@ -1,50 +1,50 @@
-<svg viewBox="0 0 1200 460" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system, system-ui, 'Helvetica Neue', Arial, sans-serif">
   <title>A better dictation tool — Same key, Multilingual, Verbatim</title>
   <desc>The F5 key on a Mac keyboard function row is highlighted with a small microphone icon; a centered caption reads "A better dictation tool" and, on one line, "Same key · Multilingual · Verbatim".</desc>
 
-  <rect width="1200" height="460" fill="#f4f6fa"/>
+  <rect width="1200" height="630" fill="#f4f6fa"/>
 
-  <text x="600" y="112" text-anchor="middle" font-size="64" font-weight="700" fill="#111318">A better dictation tool.</text>
+  <text x="600" y="200" text-anchor="middle" font-size="60" font-weight="700" fill="#111318">A better dictation tool.</text>
 
-  <text x="600" y="170" text-anchor="middle" font-size="31" font-weight="600">
-    <tspan fill="#6366f1">Same key</tspan><tspan fill="#c3c9d4" dx="18">·</tspan><tspan fill="#6366f1" dx="18">Multilingual</tspan><tspan fill="#c3c9d4" dx="18">·</tspan><tspan fill="#6366f1" dx="18">Verbatim</tspan>
+  <text x="600" y="254" text-anchor="middle" font-size="29" font-weight="600">
+    <tspan fill="#6366f1">Same key</tspan><tspan fill="#c3c9d4" dx="16">·</tspan><tspan fill="#6366f1" dx="16">Multilingual</tspan><tspan fill="#c3c9d4" dx="16">·</tspan><tspan fill="#6366f1" dx="16">Verbatim</tspan>
   </text>
 
-  <rect x="60" y="216" width="1080" height="116" rx="24" fill="#e8ebf1"/>
+  <rect x="108" y="298" width="984" height="106" rx="22" fill="#e8ebf1"/>
 
   <g>
-    <rect x="76" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="116" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F1</text>
-    <rect x="164" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="204" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F2</text>
-    <rect x="252" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="292" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F3</text>
-    <rect x="340" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="380" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F4</text>
+    <rect x="130" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="165" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F1</text>
+    <rect x="208" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="243" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F2</text>
+    <rect x="286" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="321" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F3</text>
+    <rect x="364" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="399" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F4</text>
 
-    <rect x="423" y="227" width="90" height="94" rx="16" fill="none" stroke="#6366f1" stroke-width="3.5"/>
-    <rect x="428" y="232" width="80" height="84" rx="13" fill="#111318"/>
-    <rect x="460" y="250" width="16" height="19" rx="8" fill="#ffffff"/>
-    <path d="M 455 267 a 13 13 0 0 0 26 0" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
-    <line x1="468" y1="279" x2="468" y2="289" stroke="#ffffff" stroke-width="2.4"/>
-    <line x1="461" y1="289" x2="475" y2="289" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
-    <text x="468" y="307" text-anchor="middle" font-size="12" font-weight="700" fill="#c7c9ff" letter-spacing="0.5">F5</text>
+    <rect x="437" y="309" width="80" height="84" rx="15" fill="none" stroke="#6366f1" stroke-width="3"/>
+    <rect x="442" y="314" width="70" height="74" rx="12" fill="#111318"/>
+    <rect x="470" y="330" width="14" height="17" rx="7" fill="#ffffff"/>
+    <path d="M 466 344 a 11 11 0 0 0 22 0" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+    <line x1="477" y1="355" x2="477" y2="363" stroke="#ffffff" stroke-width="2.2"/>
+    <line x1="471" y1="363" x2="483" y2="363" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>
+    <text x="477" y="381" text-anchor="middle" font-size="11" font-weight="700" fill="#c7c9ff" letter-spacing="0.5">F5</text>
 
-    <rect x="516" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="556" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F6</text>
-    <rect x="604" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="644" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F7</text>
-    <rect x="692" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="732" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F8</text>
-    <rect x="780" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="820" y="282" text-anchor="middle" font-size="16" font-weight="500" fill="#9ca3af">F9</text>
-    <rect x="868" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="908" y="282" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F10</text>
-    <rect x="956" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="996" y="282" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F11</text>
-    <rect x="1044" y="232" width="80" height="84" rx="13" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
-    <text x="1084" y="282" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F12</text>
+    <rect x="520" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="555" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F6</text>
+    <rect x="598" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="633" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F7</text>
+    <rect x="676" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="711" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F8</text>
+    <rect x="754" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="789" y="356" text-anchor="middle" font-size="15" font-weight="500" fill="#9ca3af">F9</text>
+    <rect x="832" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="867" y="356" text-anchor="middle" font-size="14" font-weight="500" fill="#9ca3af">F10</text>
+    <rect x="910" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="945" y="356" text-anchor="middle" font-size="14" font-weight="500" fill="#9ca3af">F11</text>
+    <rect x="988" y="314" width="70" height="74" rx="12" fill="#ffffff" stroke="#d9dee7" stroke-width="1.5"/>
+    <text x="1023" y="356" text-anchor="middle" font-size="14" font-weight="500" fill="#9ca3af">F12</text>
   </g>
 
-  <text x="600" y="400" text-anchor="middle" font-size="19" font-weight="500" fill="#b4bcc9">github.com/CommanderBlop/scribe-dictation</text>
+  <text x="600" y="452" text-anchor="middle" font-size="18" font-weight="500" fill="#b4bcc9">github.com/CommanderBlop/scribe-dictation</text>
 </svg>

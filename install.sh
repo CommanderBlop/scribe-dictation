@@ -87,12 +87,11 @@ fi
 say "Realtime ready."
 
 # --- 7. explain + open permission panes, then reload Hammerspoon ----------
-say "Opening the two macOS permission screens. Here's why each is needed:"
-echo "   • Accessibility — lets Scribe simulate ⌘V to paste text at your cursor. That's its only use."
-echo "   • Microphone    — lets sox record your voice. Nothing else is accessed."
+say "Opening Accessibility settings. Scribe needs two permissions:"
+echo "   • Accessibility — lets it paste text at your cursor (⌘V). Grant this now (window below)."
+echo "   • Microphone    — lets sox record your voice. macOS asks for this the FIRST time you"
+echo "                     dictate, not now — just click Allow then. Nothing else is accessed."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" || true
-sleep 1
-open "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone" || true
 
 # Load the config so there's no manual "Reload Config" step. Prefer the hs CLI
 # if it's installed; otherwise relaunch the app (it reloads config on launch).
@@ -107,15 +106,18 @@ fi
 cat <<'DONE'
 
 ============================================================
- Almost there — flip two switches (macOS requires this by hand):
+ Almost there — one permission now, one on first use:
 
-   In the Settings windows that just opened, turn ON
-   "Hammerspoon" under BOTH Accessibility and Microphone.
+   1. Accessibility (the Settings window is open): turn ON "Hammerspoon".
+      Use the + button to add it if it isn't listed.
+
+   2. Microphone: you can't set it yet — the FIRST time you dictate, macOS
+      pops up "Hammerspoon wants to use the Microphone." Click Allow.
 
  Then test it (about 10 seconds):
    1. Click into any text box (Claude, a browser, Notes…)
    2. Press  Fn+F5    (a 🟢 appears in the menu bar)
-   3. Say a sentence
+   3. Say a sentence — click Allow if macOS asks for the microphone
    4. Press  Fn+F5    again  →  your words appear at the cursor
 
  Fn+F5 is realtime mode. Fn+F4 is paragraph mode (press once to

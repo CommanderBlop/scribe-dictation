@@ -59,7 +59,8 @@ Fn+F4: hotkey ─► record mic (sox) ─► Scribe v2 (REST) ──────
 The one part of setup that happens outside this tool — about 2 minutes:
 
 1. Create an account at **[elevenlabs.io](https://elevenlabs.io/)**.
-2. Open **Profile → API Keys** (top-right avatar menu).
+2. Open **[elevenlabs.io/app/api](https://elevenlabs.io/app/api)** — i.e. **Developers →
+   API Keys** in the left sidebar (it's in the developer/API area, *not* your public profile).
 3. Click **Create API Key**.
 4. Enable the **Speech to Text** permission (required). Optionally also enable
    **User → Read** — only for the little "credits left" popup after each dictation.
@@ -88,17 +89,18 @@ First, [get your API key](#getting-your-elevenlabs-api-key) (above) — keep it 
 ```
 
 It installs everything (Homebrew, sox, Hammerspoon, the tool), asks you to **paste
-your API key**, opens the two macOS permission screens, and reloads Hammerspoon for you.
+your API key**, opens Accessibility settings, and reloads Hammerspoon for you.
 
-The one thing macOS won't let a script do — **flip two switches** (turn on
-"Hammerspoon" under each):
+Two macOS permissions — **one now, one on first use**:
 
-- **Accessibility** — lets it paste text at your cursor. *That's the only thing it's used for.*
-- **Microphone** — lets `sox` record your voice. *Nothing else is accessed.*
+- **Accessibility** *(grant now)* — turn on "Hammerspoon" in the Settings window that
+  opened (use **+** to add it if it isn't listed). Lets it paste at your cursor; that's its only use.
+- **Microphone** *(on first use)* — you can't set it yet; the first time you dictate,
+  macOS asks *"Hammerspoon wants to use the Microphone."* Click **Allow**. Nothing else is accessed.
 
 **Then test it (10 seconds):** click into any text box, press **Fn+F5** (a 🟢 appears
-in the menu bar), and start speaking. Each finalized segment lands at the cursor as
-you pause; press **Fn+F5** again to stop.
+in the menu bar), and start speaking — click **Allow** if macOS asks for the mic. Each
+finalized segment lands at the cursor as you pause; press **Fn+F5** again to stop.
 
 > On most Macs the function row is media keys, so **single F5 is Apple Dictation** —
 > you press **Fn+F5**. If the first press seems to do nothing, see
@@ -152,7 +154,7 @@ cp init.lua ~/.hammerspoon/init.lua
 
 #### 3. Add your API key
 
-Create a key at **[elevenlabs.io](https://elevenlabs.io/) → Profile → API Keys**
+Create a key at **[elevenlabs.io/app/api](https://elevenlabs.io/app/api)** (Developers → API Keys)
 (it needs the **Speech to Text** permission; add **User → Read** for the credit
 toast). Then store it — from the repo folder:
 
@@ -391,11 +393,12 @@ Open the Hammerspoon **Console** (menu-bar hammer → Console) to see logs.
 | Symptom | Likely cause |
 |---------|--------------|
 | Nothing pastes | Accessibility permission not granted to Hammerspoon |
-| No 🔴 / no audio | Microphone permission not granted, or wrong `M.sox` path |
+| No 🟢/🔴, or no audio | Grant **Microphone** when macOS prompts on your first dictation; or wrong `M.sox` path |
 | `Scribe API: ...` alert | Bad/expired API key, or out of credits |
 | "empty/unexpected response" | Check Console for the raw response printed below it |
 | `curl failed (28)` timeout | Network needs a proxy — Hammerspoon (GUI) doesn't see your shell's proxy vars. Set `M.proxy` |
-| Fn+F5 does nothing | Confirm the realtime venv exists, then try remapping `M.realtimeKey` to e.g. `⌘⌥D` |
+| **Realtime (Fn+F5) won't connect, but paragraph (Fn+F4) works** | Common behind a proxy / in a restricted region (e.g. mainland China): realtime uses a WebSocket that a direct connection may block, while the batch REST call still gets through. Set `M.proxy` to your local proxy (e.g. `"http://127.0.0.1:7890"`) so realtime routes through it too. Fn+F4 is the reliable fallback. |
+| Fn+F5 does nothing at all | Confirm the realtime venv exists (`~/projects/scribe-dictation/.venv`); on a media-key keyboard use **Fn**+F5, or remap `M.realtimeKey` |
 
 ---
 

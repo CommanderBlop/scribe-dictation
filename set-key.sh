@@ -10,7 +10,7 @@
 SERVICE="elevenlabs-api"
 say() { printf "\033[1;36m==>\033[0m %s\n" "$1"; }
 
-echo "Get a key at  https://elevenlabs.io  ->  Profile  ->  API Keys"
+echo "Get a key at  https://elevenlabs.io/app/api  (Developers -> API Keys)"
 echo "(it needs the 'Speech to Text' permission; add 'User -> Read' for the credit popup)."
 printf "Paste your ElevenLabs API key and press Return: "
 read -r KEY < /dev/tty 2>/dev/null || read -r KEY || KEY=""

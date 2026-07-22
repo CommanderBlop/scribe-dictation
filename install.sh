@@ -93,15 +93,13 @@ echo "   • Microphone    — lets sox record your voice. macOS asks for this t
 echo "                     dictate, not now — just click Allow then. Nothing else is accessed."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" || true
 
-# Load the config so there's no manual "Reload Config" step. Prefer the hs CLI
-# if it's installed; otherwise relaunch the app (it reloads config on launch).
-if command -v hs >/dev/null 2>&1 && hs -c "hs.reload()" >/dev/null 2>&1; then
-  say "Reloaded Hammerspoon."
-else
-  osascript -e 'quit app "Hammerspoon"' >/dev/null 2>&1 || true
-  sleep 1
-  open -a Hammerspoon || true
-fi
+# Relaunch Hammerspoon so it loads the freshly-copied init.lua (no manual
+# "Reload Config" step). We use killall + open rather than `osascript quit` —
+# AppleScript'ing another app triggers a "Terminal wants to control Hammerspoon"
+# permission prompt that blocks the installer until clicked.
+killall Hammerspoon >/dev/null 2>&1 || true
+for _ in 1 2 3 4 5 6; do pgrep -x Hammerspoon >/dev/null || break; sleep 0.4; done
+open -a Hammerspoon || true
 
 cat <<'DONE'
 

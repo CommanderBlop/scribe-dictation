@@ -56,6 +56,10 @@ M.realtimeIdleSecs = 30
 -- Off by default — it writes markers into your text. Set to 300 for 5-min marks.
 M.timer = false
 M.timerIntervalSecs = 60
+-- Hide Hammerspoon's own menu-bar icon so the Scribe dot is the single indicator
+-- (like the one tray icon on Windows). Console / Reload / Quit live in the Scribe
+-- menu instead; reopen after quitting via Spotlight ("Scribe Dictation").
+M.hideHammerspoonIcon = true
 -- ----------------------------
 
 -- If no env var and no hardcoded key, fall back to the macOS Keychain.
@@ -279,6 +283,15 @@ local function setApiKey()
   else hs.alert.show("Couldn't write to the Keychain.") end
 end
 
+-- Quit Hammerspoon entirely (the dot disappears). os.exit() skips
+-- hs.shutdownCallback, so stop the children explicitly first. Reopen any time
+-- from Spotlight: "Scribe Dictation" (or "Hammerspoon").
+local function quitScribe()
+  if rtTask and rtTask:isRunning() then rtTask:terminate() end
+  if recTask and recTask:isRunning() then recTask:terminate() end
+  hs.timer.doAfter(0.2, function() os.exit(0) end)
+end
+
 if menu then
   menu:setMenu(function()
     return {
@@ -306,11 +319,18 @@ if menu then
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },
       { title = "-" },
       { title = "Set / update API key…", fn = setApiKey },
+      { title = "Hammerspoon console", fn = function() hs.openConsole() end },
       { title = "Reload config", fn = function() hs.reload() end },
+      { title = "Quit Scribe", fn = quitScribe },
     }
   end)
 end
 setState("idle")
+-- Single-icon mode: with our dot in place, hide Hammerspoon's own menu icon.
+-- (Explicitly restore it when the flag is off — hs.menuIcon persists across
+-- launches, so a previous hide would otherwise stick.) If our menubar item
+-- failed to create, keep the Hammerspoon icon as the fallback way in.
+if M.hideHammerspoonIcon and menu then hs.menuIcon(false) else hs.menuIcon(true) end
 
 local function paste(text)
   text = text:gsub("[\1-\8\11-\31\127]", "")   -- strip control chars (keep tab/newline)

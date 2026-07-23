@@ -171,6 +171,12 @@ async def receive(ws, emit, outfh=None, interval=None):
                     fresh = [w for w in words
                              if w.get("start") is not None and w["start"] > last_end - 0.05]
                     if not fresh:
+                        if any(w.get("start") is not None for w in words):
+                            continue   # every word already emitted: a pure resend
+                        # No usable timestamps at all: never drop speech — degrade
+                        # to plain text (marker placement resumes on the next commit).
+                        surface(text)
+                        words_this_min += count_words(text)
                         continue
                     last_end = max((w.get("end") or w.get("start") or last_end)
                                    for w in fresh)

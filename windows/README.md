@@ -42,6 +42,14 @@ Two modes — click into any text box, then:
 The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = paragraph
 recording — and a small balloon shows your **credits left** after each use.
 
+**Right-click the tray icon** for a small settings menu: toggle the pacing timer and
+its interval, the credit balloon, and **Set / update API key** (opens the masked key
+prompt). Choices persist to `%LOCALAPPDATA%\ScribeDictation\config.ini`.
+
+**Closed it / need to reopen?** It auto-starts at login. To reopen it now, search
+**Scribe Dictation** in the Start menu (the installer adds an icon there) and click.
+To close it, right-click the tray icon → **Quit**.
+
 ### Change the hotkeys
 
 Edit the top of `windows\scribe.ahk`:

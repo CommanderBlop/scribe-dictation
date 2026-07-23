@@ -353,6 +353,13 @@ Scribe worth using.
 > that segment commits (on your next pause), not exactly on the second. Off by default
 > since it writes markers into your text.
 
+> **Menu-bar panel & reopening.** The menu-bar dot (⚪ idle · 🟢 realtime · 🔴
+> paragraph) is a small settings panel — the toggles above plus **Set / update API
+> key…** (a masked prompt that writes to your Keychain, picked up on the next
+> dictation). If you ever quit Hammerspoon, reopen **Hammerspoon** (Spotlight →
+> "Hammerspoon") — it reloads this config on launch. Tick Hammerspoon → Preferences →
+> *Launch Hammerspoon at login* so the ⚪ is always there.
+
 ---
 
 ## Realtime mode (Fn+F5)

@@ -11,7 +11,8 @@
 ; ---------------- CONFIG ----------------
 RT_KEY    := "^+Space"       ; realtime (primary)
 BATCH_KEY := "^+b"          ; paragraph mode (fallback)
-MIC       := "waveaudio default"  ; Windows mic (sox's bare -d fails). "0"/name to pick another.
+MIC       := "-t waveaudio default"  ; full sox input spec (bare -d fails on Windows).
+                                     ; e.g. "-t waveaudio 0" or "-t waveaudio ""Mic Name""".
 SILENCE   := "0.6"          ; realtime: pause (s) that finalizes a segment
 VAD       := "0.4"          ; realtime: speech-vs-silence sensitivity 0-1
 MAX_SECS  := 180            ; safety auto-stop
@@ -126,7 +127,7 @@ ToggleBatch() {
 StartBatch() {
     global state, recPid, sox, MIC, rawF, MAX_SECS, iconRec
     try FileDelete(rawF)
-    Run(sox ' -q -t ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
+    Run(sox ' -q ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
     state := "batch"
     Active("recording (paragraph)", iconRec)
     SetTimer(BatchAutoStop, -MAX_SECS * 1000)

@@ -1,0 +1,5 @@
+requests>=2.31
+keyring>=24
+# for the realtime engine (added in the next iteration):
+websockets>=15
+python-socks>=2

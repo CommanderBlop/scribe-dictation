@@ -34,6 +34,10 @@ for recording. Two modes:
 - **Fn+F4 — paragraph mode** (fallback): record, then transcribe the whole
   utterance at once. Simple and reliable; text appears a moment after you stop.
 
+> **On Windows?** An experimental port (AutoHotkey + Python) is in
+> [`windows/`](windows/README.md) — paragraph mode works via `Ctrl+Shift+Space`.
+> It's early and untested; feedback welcome.
+
 ---
 
 ## How it works

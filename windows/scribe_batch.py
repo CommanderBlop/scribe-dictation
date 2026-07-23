@@ -2,20 +2,15 @@
 """
 Batch transcription for the Windows glue (scribe.ahk).
 
-Takes a WAV file, sends it to ElevenLabs Scribe v2 (REST), and prints the
-transcript to stdout. The AutoHotkey side records the audio and pastes the
-result, so this stays tiny.
+    python scribe_batch.py <wav> [outfile]
 
-Key resolution: $ELEVENLABS_API_KEY, else the Windows Credential Manager
-(via keyring, service "scribe-dictation"). Fatal errors print one line
-prefixed "SCRIBE-ERR " so the AHK side can show a clean tray tip.
-
-    python scribe_batch.py <path-to.wav>
+Sends the WAV to ElevenLabs Scribe v2 (REST) and writes the transcript to
+`outfile` if given, otherwise stdout. ANY failure is written the same way as a
+single line prefixed "SCRIBE-ERR " so nothing fails silently and the AHK side
+can show it. Key: $ELEVENLABS_API_KEY, else Windows Credential Manager (keyring).
 """
 import os
 import sys
-
-import requests
 
 
 def get_key():
@@ -29,18 +24,15 @@ def get_key():
     return key
 
 
-def die(msg):
-    print("SCRIBE-ERR " + msg, end="")
-    sys.exit(1)
-
-
-def main():
-    if len(sys.argv) < 2:
-        die("usage: scribe_batch.py <wav>")
-    wav = sys.argv[1]
+def transcribe(wav):
+    import requests  # imported here so a missing dependency surfaces as a message
+    if not os.path.exists(wav):
+        return "SCRIBE-ERR recording not found: " + wav
+    if os.path.getsize(wav) < 2000:
+        return "SCRIBE-ERR the recording is empty — is the microphone working? (sox)"
     key = get_key()
     if not key:
-        die("no API key. Run windows\\set-key.ps1")
+        return "SCRIBE-ERR no API key. Run windows\\set-key.ps1"
 
     proxies = None
     p = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
@@ -57,20 +49,32 @@ def main():
                 timeout=90,
                 proxies=proxies,
             )
-    except Exception as e:  # network / proxy / file
-        die(f"request failed ({e.__class__.__name__}). Behind a proxy? set HTTPS_PROXY")
+    except Exception as e:
+        return f"SCRIBE-ERR request failed ({e.__class__.__name__}): {e}"
 
     if r.status_code != 200:
-        die(f"API {r.status_code}: {r.text[:160]}")
-
-    text = ""
+        return f"SCRIBE-ERR API {r.status_code}: {r.text[:160]}"
     try:
-        text = (r.json() or {}).get("text", "").strip()
+        return (r.json() or {}).get("text", "").strip()
     except Exception:
-        die("unexpected response")
+        return "SCRIBE-ERR unexpected response from the API"
 
-    # stdout = the transcript only (no trailing newline), for the AHK paste.
-    sys.stdout.write(text)
+
+def main():
+    outfile = sys.argv[2] if len(sys.argv) > 2 else None
+    try:
+        result = transcribe(sys.argv[1]) if len(sys.argv) > 1 else "SCRIBE-ERR usage: scribe_batch.py <wav>"
+    except Exception as e:  # e.g. missing 'requests'/'keyring'
+        result = f"SCRIBE-ERR {e.__class__.__name__}: {e}"
+
+    if outfile:
+        try:
+            with open(outfile, "w", encoding="utf-8") as f:
+                f.write(result)
+            return
+        except Exception:
+            pass
+    sys.stdout.write(result)
 
 
 if __name__ == "__main__":

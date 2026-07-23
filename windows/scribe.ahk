@@ -80,6 +80,7 @@ StopAndTranscribe() {
     }
     if !FileExist(rawF) || FileGetSize(rawF) < 2000 {
         Indicator("")
+        TrayTip("No audio captured — is the microphone working? (sox)", "Scribe", 3)
         A_IconTip := "Scribe — idle"
         return
     }
@@ -88,15 +89,18 @@ StopAndTranscribe() {
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
     try FileDelete(outF)
-    RunWait(A_ComSpec ' /c ""' py '" "' batch '" "' wavF '" > "' outF '""', , "Hide")
+    ; run python directly (no shell redirect); it writes the result/errors to outF
+    RunWait('"' py '" "' batch '" "' wavF '" "' outF '"', , "Hide")
     Indicator("")
-    if FileExist(outF) {
+    text := ""
+    if FileExist(outF)
         text := Trim(FileRead(outF, "UTF-8"), " `t`r`n")
-        if SubStr(text, 1, 10) = "SCRIBE-ERR"
-            TrayTip(Trim(SubStr(text, 11)), "Scribe error", 3)
-        else if text != ""
-            PasteText(text)
-    }
+    if text = ""
+        TrayTip("No transcript produced — check Python/sox (see README manual check).", "Scribe", 3)
+    else if SubStr(text, 1, 10) = "SCRIBE-ERR"
+        TrayTip(Trim(SubStr(text, 11)), "Scribe error", 3)
+    else
+        PasteText(text)
     A_IconTip := "Scribe — idle"
 }
 

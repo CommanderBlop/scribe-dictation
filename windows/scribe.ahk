@@ -47,15 +47,17 @@ if FileExist(bin "\scribe_stream.exe") {
 iconIdle := A_ScriptDir "\icon-idle.ico"   ; gray = idle
 iconLive := A_ScriptDir "\icon-live.ico"   ; green = realtime
 iconRec  := A_ScriptDir "\icon-rec.ico"    ; red = recording
+iconWork := A_ScriptDir "\icon-work.ico"   ; amber = processing (matches the mac "working" dot)
 rawF    := A_Temp "\scribe_rec.raw"
 wavF    := A_Temp "\scribe_rec.wav"
 streamF := A_Temp "\scribe_stream.txt"
 rtErrF  := A_Temp "\scribe_stream_err.txt"  ; engine stderr, so failures surface
+stopF   := A_Temp "\scribe_stop.flag"       ; created to ask the engine for a graceful stop
 batOutF := A_Temp "\scribe_batch_out.txt"
 credF   := A_Temp "\scribe_credits.txt"
 cfgFile := EnvGet("LOCALAPPDATA") "\ScribeDictation\config.ini"  ; persisted toggles
 
-state  := "idle"    ; idle | rt | batch
+state  := "idle"    ; idle | rt | rt-stopping | batch
 rtPid  := 0
 recPid := 0
 lastLen := 0
@@ -127,39 +129,82 @@ Active(tip, icon) {
 ; ---------------- realtime ----------------
 ToggleRealtime() {
     global state
-    if state = "rt"
-        StopRealtime()
+    if state = "rt" || state = "rt-stopping"
+        StopRealtime()          ; second press while draining force-kills
     else if state = "idle"
         StartRealtime()
 }
 
 StartRealtime() {
-    global state, rtPid, streamF, rtErrF, lastLen, rtStopping, engineCmd, MIC, SILENCE, VAD, MAX_SECS, iconLive, TIMER, TIMER_INTERVAL
+    global state, rtPid, streamF, rtErrF, stopF, lastLen, rtStopping, engineCmd, MIC, SILENCE, VAD, MAX_SECS, iconLive, TIMER, TIMER_INTERVAL
     try FileDelete(streamF)
     try FileDelete(rtErrF)
+    try FileDelete(stopF)   ; a stale stop flag would end the new stream instantly
     lastLen := 0
     rtStopping := false
     EnvSet("SCRIBE_SOX_INPUT", MIC)   ; tell the engine how to open the mic on Windows
     timerArg := TIMER ? " --timer --timer-interval " TIMER_INTERVAL : ""
     ; Route the engine's stderr to a file (via cmd /c) so failures — no key, sox
     ; can't open the mic, 401, network — can be shown instead of vanishing.
-    Run(A_ComSpec ' /c "' engineCmd ' --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD timerArg ' 2> "' rtErrF '""', , "Hide", &rtPid)
+    Run(A_ComSpec ' /c "' engineCmd ' --emit --out-file "' streamF '" --stop-file "' stopF '" --silence ' SILENCE ' --vad-threshold ' VAD timerArg ' 2> "' rtErrF '""', , "Hide", &rtPid)
     state := "rt"
     Active("listening (realtime)", iconLive)
     SetTimer(PollStream, 150)
     SetTimer(RtAutoStop, -MAX_SECS * 1000)
 }
 
+; Graceful stop: don't cut off speech the server hasn't transcribed yet. Creating
+; the stop flag tells the engine to stop the mic, force-commit the un-transcribed
+; tail, write it to the stream file (PollStream keeps pasting), then exit —
+; RtWaitExit completes the stop when it does. Amber icon while that's in flight;
+; a second hotkey press force-kills.
 StopRealtime(reason := "") {
-    global rtPid, rtStopping
-    rtStopping := true          ; so PollStream's death-check doesn't double-fire
+    global state, rtPid, rtStopping, stopF, iconWork
+    ; Engine already gone (crash surfaced by PollStream) -> straight to cleanup.
+    if reason != "" || !rtPid || !ProcessExist(rtPid) {
+        RtFinishStop(reason)
+        return
+    }
+    if state = "rt-stopping" {   ; second press while draining: force it now
+        RunWait('taskkill /PID ' rtPid ' /T /F', , "Hide")
+        return                   ; RtWaitExit sees it die and finishes the stop
+    }
+    state := "rt-stopping"
+    rtStopping := true           ; mute PollStream's death-check during the drain
+    SetTimer(RtAutoStop, 0)
+    Active("finishing last words…", iconWork)
+    try FileAppend("stop", stopF)
+    catch {                      ; can't signal the engine: old hard stop
+        RtFinishStop()
+        return
+    }
+    SetTimer(RtWaitExit, 200)
+    SetTimer(RtForceKill, -8000) ; engine wedged mid-drain? force it, once
+}
+
+RtWaitExit() {
+    global rtPid
+    if !rtPid || !ProcessExist(rtPid)
+        RtFinishStop()
+}
+
+RtForceKill() {
+    global state, rtPid
+    if state = "rt-stopping" && rtPid && ProcessExist(rtPid)
+        RunWait('taskkill /PID ' rtPid ' /T /F', , "Hide")
+}
+
+RtFinishStop(reason := "") {
+    global rtPid, rtStopping, stopF
     SetTimer(PollStream, 0)
+    SetTimer(RtWaitExit, 0)
+    SetTimer(RtForceKill, 0)
     SetTimer(RtAutoStop, 0)
     PollStream()   ; flush any last segment
-    if rtPid {
+    if rtPid && ProcessExist(rtPid)
         RunWait('taskkill /PID ' rtPid ' /T /F', , "Hide")
-        rtPid := 0
-    }
+    rtPid := 0
+    try FileDelete(stopF)
     Idle()
     if reason != ""
         TrayTip(reason, "Scribe error", 3)
@@ -233,7 +278,7 @@ StartBatch() {
 }
 
 StopBatch() {
-    global recPid, sox, batchCmd, rawF, wavF, batOutF, iconRec
+    global recPid, sox, batchCmd, rawF, wavF, batOutF, iconWork
     SetTimer(BatchAutoStop, 0)
     if recPid {
         RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
@@ -244,7 +289,7 @@ StopBatch() {
         TrayTip("No audio captured — is the microphone working? (sox)", "Scribe", 3)
         return
     }
-    Active("transcribing…", iconRec)
+    Active("transcribing…", iconWork)
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
     try FileDelete(batOutF)

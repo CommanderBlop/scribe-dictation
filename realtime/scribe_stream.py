@@ -171,7 +171,7 @@ async def receive(ws, emit, outfh=None, interval=None):
                             if seg:
                                 surface(seg)
                                 words_this_min += count_words(seg)
-                            surface(f"⏱ {mmss(next_mark)} · {words_this_min} words",
+                            surface(f"[{mmss(next_mark)} · {words_this_min} words]",
                                     marker=True)
                             words_this_min = 0
                             bucket = []
@@ -216,7 +216,7 @@ async def main():
     ap.add_argument("--out-file", default=None,
                     help="also append each finalized line here (for the Windows/AHK glue)")
     ap.add_argument("--timer", action="store_true",
-                    help="practice mode: insert a pacing marker (⏱ M:SS · N words) every "
+                    help="practice mode: insert a pacing marker ([M:SS · N words]) every "
                          "--timer-interval seconds, split at the exact word")
     ap.add_argument("--timer-interval", type=float, default=60.0, dest="timer_interval",
                     help="seconds between pacing markers when --timer is set (default 60)")

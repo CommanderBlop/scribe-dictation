@@ -69,9 +69,9 @@ transcript every minute so you can see your words-per-minute afterward:
 
 ```
 So the main challenge was scaling the pipeline …
-⏱ 1:00 · 132 words
+[1:00 · 132 words]
 … we sharded by tenant, which halved p99 latency …
-⏱ 2:00 · 118 words
+[2:00 · 118 words]
 ```
 
 It's **off by default** (it writes markers into your text). Turn it on from the

@@ -17,7 +17,7 @@ SILENCE   := "0.6"          ; realtime: pause (s) that finalizes a segment
 VAD       := "0.4"          ; realtime: speech-vs-silence sensitivity 0-1
 MAX_SECS  := 180            ; safety auto-stop
 SHOW_CREDITS := true        ; tray balloon with credits left after each use
-TIMER     := false          ; practice mode: insert "⏱ M:SS · N words" markers into the text
+TIMER     := false          ; practice mode: insert "[M:SS · N words]" markers into the text
 TIMER_INTERVAL := 60        ; seconds between pacing markers (e.g. 300 for 5-min marks)
 ; ----------------------------------------
 
@@ -270,7 +270,7 @@ ShowCredits() {
     if FileExist(credF) {
         c := Trim(FileRead(credF, "UTF-8"), " `t`r`n")
         if c != ""
-            TrayTip(c " credits left", "Scribe 💳", 1)
+            TrayTip(c " credits left", "Scribe", 1)
     }
 }
 

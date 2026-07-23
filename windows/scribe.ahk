@@ -11,6 +11,9 @@
 ; ---------------- CONFIG ----------------
 HOTKEY_STR := "^+Space"    ; Ctrl+Shift+Space. (F5 is "refresh" on Windows.)
 MAX_SECS   := 120          ; safety auto-stop
+MIC := "waveaudio default" ; Windows input. sox's bare "-d" fails here; use the
+                           ; waveaudio driver. Change "default" to "0" or a device
+                           ; name if the wrong mic is picked.
 ; ----------------------------------------
 
 repo   := A_ScriptDir "\.."
@@ -63,7 +66,7 @@ Indicator(msg, color := "C0392B") {
 StartRec() {
     global recPid, recording, sox, rawF, MAX_SECS, HOTKEY_STR
     try FileDelete(rawF)
-    Run(sox ' -d -q -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
+    Run(sox ' -q -t ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
     recording := true
     A_IconTip := "Scribe — recording…"
     Indicator("● Recording")

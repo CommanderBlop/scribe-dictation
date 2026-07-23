@@ -168,6 +168,18 @@ end
 local function setParagraphKey(p)
   M.toggleKey = { mods = p.mods, key = p.key }; bindParagraph(); saveSettings()
 end
+-- Human label for the current binding, e.g. ⌃⌥J — shown so a custom key is visible.
+local MODSYM = { ctrl = "⌃", alt = "⌥", shift = "⇧", cmd = "⌘" }
+local function fmtKey(b)
+  if not b or not b.key then return "off" end
+  local has = {}
+  for _, m in ipairs(b.mods or {}) do has[m] = true end
+  local s = ""
+  for _, m in ipairs({ "ctrl", "alt", "shift", "cmd" }) do
+    if has[m] then s = s .. MODSYM[m] end
+  end
+  return s .. (b.key:gsub("^%l", string.upper))
+end
 -- "Custom…" — listen for the next real keypress and bind it live.
 local function captureHotkey(setter)
   local tap, timeout
@@ -202,13 +214,20 @@ local function captureHotkey(setter)
 end
 
 local function presetItems(presets, current, setter)
-  local items = {}
+  local items, isPreset = {}, false
   for _, p in ipairs(presets) do
-    items[#items + 1] = { title = p.label, checked = keyEq(current, p),
-                          fn = function() setter(p) end }
+    local on = keyEq(current, p)
+    if on then isPreset = true end
+    items[#items + 1] = { title = p.label, checked = on, fn = function() setter(p) end }
   end
   items[#items + 1] = { title = "-" }
-  items[#items + 1] = { title = "Custom…", fn = function() captureHotkey(setter) end }
+  -- If the current binding is a custom combo, show it (checked) so it's visible.
+  if isPreset then
+    items[#items + 1] = { title = "Custom…", fn = function() captureHotkey(setter) end }
+  else
+    items[#items + 1] = { title = "Custom: " .. fmtKey(current), checked = true,
+                          fn = function() captureHotkey(setter) end }
+  end
   return items
 end
 
@@ -275,8 +294,10 @@ if menu then
           fn = function() M.timerIntervalSecs = 300; saveSettings() end },
       }},
       { title = "-" },
-      { title = "Realtime hotkey",  menu = presetItems(RT_PRESETS, M.realtimeKey, setRealtimeKey) },
-      { title = "Paragraph hotkey", menu = presetItems(BATCH_PRESETS, M.toggleKey, setParagraphKey) },
+      { title = "Realtime hotkey  ·  " .. fmtKey(M.realtimeKey),
+        menu = presetItems(RT_PRESETS, M.realtimeKey, setRealtimeKey) },
+      { title = "Paragraph hotkey  ·  " .. fmtKey(M.toggleKey),
+        menu = presetItems(BATCH_PRESETS, M.toggleKey, setParagraphKey) },
       { title = "-" },
       { title = "Show credit balloon", checked = M.showCredits,
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },

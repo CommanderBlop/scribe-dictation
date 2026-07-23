@@ -4,14 +4,12 @@
 ;  Scribe Dictation — Windows glue (paragraph / batch mode)
 ;  Press the hotkey to start recording, press again to stop;
 ;  the recording is transcribed by ElevenLabs Scribe v2 and
-;  pasted at your cursor. Mirrors the macOS Fn+F5 paragraph mode.
-;
-;  This is the thin "glue" (hotkey + record + paste + tray).
-;  Transcription is done by windows\scribe_batch.py.
+;  pasted at your cursor. (Thin glue; transcription is in
+;  windows\scribe_batch.py.)
 ; ============================================================
 
 ; ---------------- CONFIG ----------------
-HOTKEY_STR := "^+Space"    ; Ctrl+Shift+Space. F5 is "refresh" on Windows, so we avoid it.
+HOTKEY_STR := "^+Space"    ; Ctrl+Shift+Space. (F5 is "refresh" on Windows.)
 MAX_SECS   := 120          ; safety auto-stop
 ; ----------------------------------------
 
@@ -26,10 +24,20 @@ outF   := A_Temp "\scribe_out.txt"
 recPid := 0
 recording := false
 
+; ---- tray ----
 A_IconTip := "Scribe — " HOTKEY_STR " to dictate"
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Scribe (idle)", (*) => "")
 A_TrayMenu.Add("Quit", (*) => ExitApp())
+
+; ---- on-screen indicator (small pill, always on top, click-through) ----
+ind := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+ind.BackColor := "C0392B"
+ind.SetFont("s11 bold cWhite", "Segoe UI")
+indText := ind.Add("Text", "x0 y8 w170 h24 Center", "")
+
+; confirm the script actually launched
+TrayTip("Ready — press " HOTKEY_STR " in any text box to dictate.", "Scribe Dictation is running", 1)
 
 Hotkey(HOTKEY_STR, (*) => Toggle())
 
@@ -41,14 +49,25 @@ Toggle() {
         StartRec()
 }
 
+Indicator(msg, color := "C0392B") {
+    global ind, indText
+    if msg = "" {
+        ind.Hide()
+        return
+    }
+    ind.BackColor := color
+    indText.Text := msg
+    ind.Show("NoActivate x" (A_ScreenWidth // 2 - 85) " y26 w170 h40")
+}
+
 StartRec() {
     global recPid, recording, sox, rawF, MAX_SECS, HOTKEY_STR
     try FileDelete(rawF)
-    ; record to headerless raw PCM: a force-kill can't corrupt a header that isn't there
     Run(sox ' -d -q -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
     recording := true
-    A_IconTip := "Scribe — recording… (" HOTKEY_STR " to stop)"
-    SetTimer(AutoStop, -MAX_SECS * 1000)   ; one-shot safety
+    A_IconTip := "Scribe — recording…"
+    Indicator("● Recording")
+    SetTimer(AutoStop, -MAX_SECS * 1000)
 }
 
 StopAndTranscribe() {
@@ -59,21 +78,22 @@ StopAndTranscribe() {
         RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
         recPid := 0
     }
-    if !FileExist(rawF) || FileGetSize(rawF) < 2000 {   ; nothing usable recorded
+    if !FileExist(rawF) || FileGetSize(rawF) < 2000 {
+        Indicator("")
         A_IconTip := "Scribe — idle"
         return
     }
     A_IconTip := "Scribe — transcribing…"
-    ; wrap the raw PCM into a .wav container so the API knows the format
+    Indicator("Transcribing…", "2C3E50")
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
-    ; transcribe; capture stdout to a file (one-shot, so no concurrent-read issue)
     try FileDelete(outF)
     RunWait(A_ComSpec ' /c ""' py '" "' batch '" "' wavF '" > "' outF '""', , "Hide")
+    Indicator("")
     if FileExist(outF) {
         text := Trim(FileRead(outF, "UTF-8"), " `t`r`n")
         if SubStr(text, 1, 10) = "SCRIBE-ERR"
-            TrayTip("Scribe", Trim(SubStr(text, 11)), 3)
+            TrayTip(Trim(SubStr(text, 11)), "Scribe error", 3)
         else if text != ""
             PasteText(text)
     }

@@ -44,15 +44,28 @@ if (-not (Get-Command sox -ErrorAction SilentlyContinue)) {
 
 Set-ScribeKey "$repo\.venv\Scripts\python.exe"
 
+# Find the AutoHotkey v2 exe — a silent winget install often doesn't set up the
+# .ahk file association, so we launch the script via the exe directly.
+$cands = Get-ChildItem "C:\Program Files\AutoHotkey","${env:LOCALAPPDATA}\Programs\AutoHotkey" `
+    -Recurse -Filter "AutoHotkey*.exe" -ErrorAction SilentlyContinue | Select-Object -Expand FullName
+$ahk = $cands | Where-Object { $_ -match '\\v2\\' -or $_ -match 'AutoHotkey64\.exe' } | Select-Object -First 1
+if (-not $ahk) { $ahk = $cands | Select-Object -First 1 }
+$script = "$repo\windows\scribe.ahk"
+
 Say "Adding a startup shortcut…"
 $startup = [Environment]::GetFolderPath('Startup')
 $ws = New-Object -ComObject WScript.Shell
 $sc = $ws.CreateShortcut("$startup\Scribe Dictation.lnk")
-$sc.TargetPath = "$repo\windows\scribe.ahk"
+if ($ahk) { $sc.TargetPath = $ahk; $sc.Arguments = "`"$script`"" } else { $sc.TargetPath = $script }
 $sc.Save()
 
 Say "Launching Scribe…"
-Start-Process "$repo\windows\scribe.ahk"
+if ($ahk) {
+    Start-Process $ahk -ArgumentList "`"$script`""
+    Write-Host "(Using AutoHotkey at: $ahk)"
+} else {
+    Write-Host "Couldn't find AutoHotkey.exe. Open AutoHotkey from the Start menu once, then double-click:`n  $script" -ForegroundColor Yellow
+}
 
 Write-Host ""
 Write-Host "Done. Click into any text box, press Ctrl+Shift+Space, talk, press again — text appears at your cursor." -ForegroundColor Green

@@ -120,6 +120,7 @@ async def receive(ws, emit, outfh=None, interval=None):
     last_beat = 0.0
     next_mark = interval          # None when the timer is off
     words_this_min = 0
+    last_end = 0.0                # highest word end-time already emitted (dedup)
 
     def surface(line, marker=False):
         if emit:
@@ -164,11 +165,20 @@ async def receive(ws, emit, outfh=None, interval=None):
                 last = text
                 words = m.get("words") or []
                 if next_mark is not None and words:
-                    # Split this segment at each interval boundary it crosses, using
-                    # each word's absolute audio-time so the marker lands on the right
-                    # word and the count reflects what was actually said that minute.
+                    # Absolute-time dedup: the realtime server sometimes resends or
+                    # overlaps a committed segment; take only words past the last
+                    # end-time we've already emitted, so nothing gets pasted twice.
+                    fresh = [w for w in words
+                             if w.get("start") is not None and w["start"] > last_end - 0.05]
+                    if not fresh:
+                        continue
+                    last_end = max((w.get("end") or w.get("start") or last_end)
+                                   for w in fresh)
+                    # Split at each interval boundary using each word's absolute
+                    # audio-time, so the marker lands on the right word and the count
+                    # reflects what was actually said that interval.
                     bucket = []
-                    for w in words:
+                    for w in fresh:
                         st = w.get("start")
                         while st is not None and st >= next_mark:
                             seg = "".join(x.get("text", "") for x in bucket).strip()

@@ -17,8 +17,9 @@ irm https://raw.githubusercontent.com/CommanderBlop/scribe-dictation/main/window
 ```
 
 It installs AutoHotkey, Python, git, and sox (via winget), sets up a Python venv,
-asks for your **ElevenLabs API key** (stored in the Windows Credential Manager),
-adds a startup shortcut, and launches the tool.
+adds a startup shortcut, and launches the tool. Then set your **ElevenLabs API
+key** from the tray: right-click the dot → **Set / Update API key** (stored in
+the Windows Credential Manager).
 
 Get a key at **elevenlabs.io/app/api** (Developers → API Keys, *Speech to Text*
 permission). Rotate it any time with:

@@ -1,116 +1,186 @@
 #Requires AutoHotkey v2.0
 #SingleInstance Force
 ; ============================================================
-;  Scribe Dictation — Windows glue (paragraph / batch mode)
-;  Press the hotkey to start recording, press again to stop;
-;  the recording is transcribed by ElevenLabs Scribe v2 and
-;  pasted at your cursor. (Thin glue; transcription is in
-;  windows\scribe_batch.py.)
+;  Scribe Dictation — Windows glue
+;  Ctrl+Shift+Space : realtime — stream & paste each segment as you speak
+;  Ctrl+Shift+B     : paragraph (fallback) — record, then transcribe the whole clip
+;  Tray dot: green = idle, red = recording. A credit balloon shows after each use.
+;  Transcription is done by the Python side (realtime engine / scribe_batch.py).
 ; ============================================================
 
 ; ---------------- CONFIG ----------------
-HOTKEY_STR := "^+Space"    ; Ctrl+Shift+Space. (F5 is "refresh" on Windows.)
-MAX_SECS   := 120          ; safety auto-stop
-MIC := "waveaudio default" ; Windows input. sox's bare "-d" fails here; use the
-                           ; waveaudio driver. Change "default" to "0" or a device
-                           ; name if the wrong mic is picked.
+RT_KEY    := "^+Space"       ; realtime (primary)
+BATCH_KEY := "^+b"          ; paragraph mode (fallback)
+MIC       := "waveaudio default"  ; Windows mic (sox's bare -d fails). "0"/name to pick another.
+SILENCE   := "0.6"          ; realtime: pause (s) that finalizes a segment
+VAD       := "0.4"          ; realtime: speech-vs-silence sensitivity 0-1
+MAX_SECS  := 180            ; safety auto-stop
+SHOW_CREDITS := true        ; tray balloon with credits left after each use
 ; ----------------------------------------
 
-repo   := A_ScriptDir "\.."
-py     := repo "\.venv\Scripts\python.exe"
-batch  := A_ScriptDir "\scribe_batch.py"
-sox    := "sox"                       ; expected on PATH (installed by install.ps1)
-rawF   := A_Temp "\scribe_rec.raw"
-wavF   := A_Temp "\scribe_rec.wav"
-outF   := A_Temp "\scribe_out.txt"
+repo    := A_ScriptDir "\.."
+py      := repo "\.venv\Scripts\python.exe"
+engine  := repo "\realtime\scribe_stream.py"
+batch   := A_ScriptDir "\scribe_batch.py"
+creditsPy := A_ScriptDir "\scribe_credits.py"
+sox     := "sox"
+iconIdle := A_ScriptDir "\icon-idle.ico"
+iconRec  := A_ScriptDir "\icon-rec.ico"
+rawF    := A_Temp "\scribe_rec.raw"
+wavF    := A_Temp "\scribe_rec.wav"
+streamF := A_Temp "\scribe_stream.txt"
+batOutF := A_Temp "\scribe_batch_out.txt"
+credF   := A_Temp "\scribe_credits.txt"
 
+state  := "idle"    ; idle | rt | batch
+rtPid  := 0
 recPid := 0
-recording := false
+lastLen := 0
 
-; ---- tray ----
-A_IconTip := "Scribe — " HOTKEY_STR " to dictate"
+try TraySetIcon(iconIdle)
+A_IconTip := "Scribe — idle  (Ctrl+Shift+Space realtime · Ctrl+Shift+B paragraph)"
 A_TrayMenu.Delete()
-A_TrayMenu.Add("Scribe (idle)", (*) => "")
+A_TrayMenu.Add("Scribe Dictation", (*) => "")
 A_TrayMenu.Add("Quit", (*) => ExitApp())
 
-; ---- on-screen indicator (small pill, always on top, click-through) ----
-ind := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
-ind.BackColor := "C0392B"
-ind.SetFont("s11 bold cWhite", "Segoe UI")
-indText := ind.Add("Text", "x0 y8 w170 h24 Center", "")
+Hotkey(RT_KEY, (*) => ToggleRealtime())
+Hotkey(BATCH_KEY, (*) => ToggleBatch())
 
-; confirm the script actually launched
-TrayTip("Ready — press " HOTKEY_STR " in any text box to dictate.", "Scribe Dictation is running", 1)
-
-Hotkey(HOTKEY_STR, (*) => Toggle())
-
-Toggle() {
-    global recording
-    if recording
-        StopAndTranscribe()
-    else
-        StartRec()
+Idle() {
+    global state, iconIdle
+    state := "idle"
+    try TraySetIcon(iconIdle)
+    A_IconTip := "Scribe — idle"
+}
+Active(tip) {
+    global iconRec
+    try TraySetIcon(iconRec)
+    A_IconTip := "Scribe — " tip
 }
 
-Indicator(msg, color := "C0392B") {
-    global ind, indText
-    if msg = "" {
-        ind.Hide()
-        return
+; ---------------- realtime ----------------
+ToggleRealtime() {
+    global state
+    if state = "rt"
+        StopRealtime()
+    else if state = "idle"
+        StartRealtime()
+}
+
+StartRealtime() {
+    global state, rtPid, streamF, lastLen, py, engine, MIC, SILENCE, VAD, MAX_SECS
+    try FileDelete(streamF)
+    lastLen := 0
+    EnvSet("SCRIBE_SOX_INPUT", MIC)   ; tell the engine how to open the mic on Windows
+    Run('"' py '" "' engine '" --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD, , "Hide", &rtPid)
+    state := "rt"
+    Active("listening (realtime)")
+    SetTimer(PollStream, 150)
+    SetTimer(RtAutoStop, -MAX_SECS * 1000)
+}
+
+StopRealtime() {
+    global rtPid
+    SetTimer(PollStream, 0)
+    SetTimer(RtAutoStop, 0)
+    PollStream()   ; flush any last segment
+    if rtPid {
+        RunWait('taskkill /PID ' rtPid ' /T /F', , "Hide")
+        rtPid := 0
     }
-    ind.BackColor := color
-    indText.Text := msg
-    ind.Show("NoActivate x" (A_ScreenWidth // 2 - 85) " y26 w170 h40")
+    Idle()
+    ShowCredits()
 }
 
-StartRec() {
-    global recPid, recording, sox, rawF, MAX_SECS, HOTKEY_STR
+PollStream() {
+    global streamF, lastLen
+    if !FileExist(streamF)
+        return
+    txt := FileRead(streamF, "UTF-8")
+    if StrLen(txt) > lastLen {
+        chunk := SubStr(txt, lastLen + 1)
+        lastLen := StrLen(txt)
+        Loop Parse chunk, "`n", "`r" {
+            line := Trim(A_LoopField)
+            if line != ""
+                PasteText(line " ")
+        }
+    }
+}
+
+RtAutoStop() {
+    global state
+    if state = "rt"
+        StopRealtime()
+}
+
+; ---------------- paragraph / batch ----------------
+ToggleBatch() {
+    global state
+    if state = "batch"
+        StopBatch()
+    else if state = "idle"
+        StartBatch()
+}
+
+StartBatch() {
+    global state, recPid, sox, MIC, rawF, MAX_SECS
     try FileDelete(rawF)
     Run(sox ' -q -t ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
-    recording := true
-    A_IconTip := "Scribe — recording…"
-    Indicator("● Recording")
-    SetTimer(AutoStop, -MAX_SECS * 1000)
+    state := "batch"
+    Active("recording (paragraph)")
+    SetTimer(BatchAutoStop, -MAX_SECS * 1000)
 }
 
-StopAndTranscribe() {
-    global recPid, recording, py, batch, sox, rawF, wavF, outF
-    SetTimer(AutoStop, 0)
-    recording := false
+StopBatch() {
+    global recPid, sox, py, batch, rawF, wavF, batOutF
+    SetTimer(BatchAutoStop, 0)
     if recPid {
         RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
         recPid := 0
     }
     if !FileExist(rawF) || FileGetSize(rawF) < 2000 {
-        Indicator("")
+        Idle()
         TrayTip("No audio captured — is the microphone working? (sox)", "Scribe", 3)
-        A_IconTip := "Scribe — idle"
         return
     }
-    A_IconTip := "Scribe — transcribing…"
-    Indicator("Transcribing…", "2C3E50")
+    Active("transcribing…")
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
-    try FileDelete(outF)
-    ; run python directly (no shell redirect); it writes the result/errors to outF
-    RunWait('"' py '" "' batch '" "' wavF '" "' outF '"', , "Hide")
-    Indicator("")
+    try FileDelete(batOutF)
+    RunWait('"' py '" "' batch '" "' wavF '" "' batOutF '"', , "Hide")
     text := ""
-    if FileExist(outF)
-        text := Trim(FileRead(outF, "UTF-8"), " `t`r`n")
+    if FileExist(batOutF)
+        text := Trim(FileRead(batOutF, "UTF-8"), " `t`r`n")
+    Idle()
     if text = ""
-        TrayTip("No transcript produced — check Python/sox (see README manual check).", "Scribe", 3)
+        TrayTip("No transcript produced — check Python/sox (see README).", "Scribe", 3)
     else if SubStr(text, 1, 10) = "SCRIBE-ERR"
         TrayTip(Trim(SubStr(text, 11)), "Scribe error", 3)
-    else
+    else {
         PasteText(text)
-    A_IconTip := "Scribe — idle"
+        ShowCredits()
+    }
 }
 
-AutoStop() {
-    global recording
-    if recording
-        StopAndTranscribe()
+BatchAutoStop() {
+    global state
+    if state = "batch"
+        StopBatch()
+}
+
+; ---------------- shared ----------------
+ShowCredits() {
+    global SHOW_CREDITS, py, creditsPy, credF
+    if !SHOW_CREDITS
+        return
+    try FileDelete(credF)
+    RunWait('"' py '" "' creditsPy '" "' credF '"', , "Hide")
+    if FileExist(credF) {
+        c := Trim(FileRead(credF, "UTF-8"), " `t`r`n")
+        if c != ""
+            TrayTip(c " credits left", "Scribe 💳", 1)
+    }
 }
 
 PasteText(txt) {
@@ -118,6 +188,6 @@ PasteText(txt) {
     A_Clipboard := txt
     ClipWait(1)
     Send("^v")
-    Sleep(150)
+    Sleep(120)
     A_Clipboard := prev
 }

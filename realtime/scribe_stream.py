@@ -36,6 +36,15 @@ SOX = os.environ.get("SCRIBE_SOX_PATH") or shutil.which("sox") or "/opt/homebrew
 SAMPLE_RATE = 16000
 CHUNK_BYTES = 3200  # 16-bit mono @16kHz -> 100ms per chunk
 
+# How sox opens the mic. macOS: "-d". Windows: bare "-d" fails ("no default audio
+# device configured"), so use the waveaudio driver. Override with $SCRIBE_SOX_INPUT.
+if os.environ.get("SCRIBE_SOX_INPUT"):
+    SOX_INPUT = os.environ["SCRIBE_SOX_INPUT"].split()
+elif sys.platform == "win32":
+    SOX_INPUT = ["-t", "waveaudio", "default"]
+else:
+    SOX_INPUT = ["-d"]
+
 
 def die(msg: str) -> None:
     """Print a one-line, Hammerspoon-recognizable fatal error, then exit."""
@@ -76,8 +85,8 @@ async def pump_audio(ws, proc):
         pass
 
 
-async def receive(ws, emit: bool):
-    """Surface transcripts. `emit` -> plain finalized lines for piping."""
+async def receive(ws, emit, outfh=None):
+    """Surface transcripts. `emit` -> plain finalized lines for piping/out-file."""
     last = None
     last_beat = 0.0
     try:
@@ -112,6 +121,9 @@ async def receive(ws, emit: bool):
                 last = text
                 if emit:
                     print(text, flush=True)          # one plain line -> Hammerspoon
+                    if outfh:
+                        outfh.write(text + "\n")
+                        outfh.flush()
                 else:
                     lang = m.get("language_code", "")
                     tag = f" [{lang}]" if lang else ""
@@ -139,22 +151,38 @@ async def main():
     ap.add_argument("--vad-threshold", type=float, default=0.4, dest="vad_threshold",
                     help="speech-vs-silence sensitivity 0-1 (API default 0.4); "
                          "higher = ignores ambient noise, idles/closes sooner")
+    ap.add_argument("--out-file", default=None,
+                    help="also append each finalized line here (for the Windows/AHK glue)")
     args = ap.parse_args()
 
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
-        die("no API key found. Run  bash set-key.sh  to store one.")
+        try:
+            import keyring  # type: ignore[import-not-found]
+            key = keyring.get_password("scribe-dictation", "api")
+        except Exception:
+            key = None
+    if not key:
+        die("no API key found. (macOS: set-key.sh · Windows: set-key.ps1)")
     if args.silence <= 0:
         die("--silence must be > 0 seconds")
     if not 0 < args.vad_threshold <= 1:
         die("--vad-threshold must be between 0 and 1")
 
     url = build_url("manual" if args.manual else "vad", args.silence, args.vad_threshold)
+
+    outfh = None
+    if args.out_file:
+        try:
+            outfh = open(args.out_file, "a", encoding="utf-8")
+        except Exception:
+            outfh = None
+
     # Capture sox's stderr so a failure (e.g. mic permission denied, no input
     # device) can be reported instead of hanging silently.
     try:
         proc = await asyncio.create_subprocess_exec(
-            SOX, "-d", "-q", "-t", "raw", "-r", str(SAMPLE_RATE),
+            SOX, *SOX_INPUT, "-q", "-t", "raw", "-r", str(SAMPLE_RATE),
             "-b", "16", "-c", "1", "-e", "signed-integer", "-",
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
@@ -165,7 +193,7 @@ async def main():
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
                                       max_size=None) as ws:
             pump = asyncio.create_task(pump_audio(ws, proc))
-            recv = asyncio.create_task(receive(ws, args.emit))
+            recv = asyncio.create_task(receive(ws, args.emit, outfh))
             # Stop as soon as either side ends (sox dying ends pump -> we exit,
             # rather than blocking forever waiting for transcripts).
             done, pending = await asyncio.wait({pump, recv},
@@ -190,6 +218,11 @@ async def main():
     except Exception as e:  # never surface a raw multi-line traceback
         die(f"{e.__class__.__name__}: {e}")
     finally:
+        if outfh:
+            try:
+                outfh.close()
+            except Exception:
+                pass
         if proc.returncode is None:
             proc.terminate()
         await proc.wait()

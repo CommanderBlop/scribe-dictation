@@ -4,9 +4,8 @@ A Windows port of the macOS tool, using **AutoHotkey v2** as the glue (global
 hotkey + paste + tray) and reusing the Python side for transcription. This mirrors
 the macOS architecture (thin glue + shared engine).
 
-> **Status:** untested. It was written on a Mac and has never run on Windows yet —
-> this first drop covers **paragraph mode only** (record → Scribe v2 REST → paste).
-> Realtime streaming comes next, once the basics are validated. Expect rough edges;
+> **Status:** early. Paragraph mode is confirmed working on Windows; realtime
+> streaming is newly added. Written/maintained from a Mac, so expect rough edges —
 > please report what breaks.
 
 ## Install
@@ -33,11 +32,16 @@ files by default — the one-line installer sidesteps this by inlining the step.
 
 ## Use
 
-Click into any text box, press **Ctrl+Shift+Space**, talk, press it again — the
-transcript is pasted at your cursor. A tray icon shows the state.
+Two modes — click into any text box, then:
 
-(F5 is "refresh" on Windows, so the hotkey is Ctrl+Shift+Space, not F5. Change
-`HOTKEY_STR` at the top of `scribe.ahk` to taste.)
+- **Ctrl+Shift+Space — realtime** (primary): text is pasted segment-by-segment as you
+  speak; press again to stop.
+- **Ctrl+Shift+B — paragraph** (fallback): record, press again to stop, and the whole
+  clip is transcribed and pasted at once.
+
+The **tray dot** shows state — 🟢 green = idle, 🔴 red = recording — and a small
+balloon shows your **credits left** after each use. (F5 is "refresh" on Windows, so
+the keys aren't F5; change them at the top of `scribe.ahk`.)
 
 ## Not needed on Windows
 

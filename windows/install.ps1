@@ -1,4 +1,4 @@
-# Scribe Dictation — Windows installer (EXPERIMENTAL, untested).
+# Scribe Dictation — Windows installer.
 # Run in PowerShell:
 #   irm https://raw.githubusercontent.com/CommanderBlop/scribe-dictation/main/windows/install.ps1 | iex
 
@@ -13,7 +13,9 @@ function Set-ScribeKey($PyExe) {
     $have = & $PyExe -c "import keyring; print('yes' if keyring.get_password('scribe-dictation','api') else 'no')" 2>$null
     if ($have -eq 'yes') { Say "API key already in your Credential Manager - keeping it."; return }
     Write-Host "Get a key at  https://elevenlabs.io/app/api  (Developers -> API Keys, 'Speech to Text')."
-    $key = Read-Host "Paste your ElevenLabs API key"
+    # -AsSecureString so the pasted key isn't echoed to the console / scrollback.
+    $sec = Read-Host "Paste your ElevenLabs API key" -AsSecureString
+    $key = [System.Net.NetworkCredential]::new('', $sec).Password
     if ($key -notmatch '^sk_[A-Za-z0-9]+$') {
         Write-Host "That doesn't look like an ElevenLabs key (sk_...). Skipped." -ForegroundColor Yellow
         return
@@ -26,6 +28,10 @@ function Set-ScribeKey($PyExe) {
     Say "API key saved to Windows Credential Manager."
 }
 
+if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+    throw "winget (App Installer) isn't available. Install 'App Installer' from the Microsoft Store (or update Windows), reopen PowerShell, and re-run this."
+}
+
 Say "Installing AutoHotkey, Python, git, sox via winget (approve any prompts)…"
 winget install -e --id AutoHotkey.AutoHotkey --silent --accept-source-agreements --accept-package-agreements
 winget install -e --id Python.Python.3.12    --silent --accept-source-agreements --accept-package-agreements
@@ -35,6 +41,12 @@ try { winget install -e --id ChrisBagwell.SoX --silent --accept-source-agreement
 
 # refresh PATH so freshly-installed tools are visible in this session
 $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
+
+# winget sets $ErrorActionPreference-immune native exit codes, so verify the tools
+# we depend on actually landed rather than tripping confusingly a few lines down.
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+    throw "Python didn't install (or isn't on PATH). Install Python 3.12+ manually, reopen PowerShell, and re-run this."
+}
 
 $repo = "$HOME\projects\scribe-dictation"
 if (Test-Path "$repo\.git") { Say "Updating Scribe Dictation…"; git -C $repo pull --ff-only }

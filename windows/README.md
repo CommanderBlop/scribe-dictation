@@ -1,12 +1,12 @@
-# Scribe Dictation — Windows (⚠️ experimental)
+# Scribe Dictation — Windows
 
 A Windows port of the macOS tool, using **AutoHotkey v2** as the glue (global
 hotkey + paste + tray) and reusing the Python side for transcription. This mirrors
 the macOS architecture (thin glue + shared engine).
 
-> **Status:** early. Paragraph mode is confirmed working on Windows; realtime
-> streaming is newly added. Written/maintained from a Mac, so expect rough edges —
-> please report what breaks.
+> **Status:** both modes (realtime + paragraph) are confirmed working on Windows.
+> It's written/maintained from a Mac, so if something breaks, please open an issue —
+> failures now surface as a tray notification rather than failing silently.
 
 ## Install
 
@@ -73,21 +73,26 @@ Set `HTTPS_PROXY` for the tool's environment, e.g. `setx HTTPS_PROXY http://127.
 (then restart the tool). Batch mode uses REST, which is usually more reachable than
 the realtime WebSocket.
 
-## Known things to validate (first-run checklist)
+## Troubleshooting
 
-These are the parts most likely to need fixing on real Windows:
+- **`sox` not found** — the winget id (`ChrisBagwell.SoX`) may not exist in your
+  source. Install it another way (`scoop install sox`, or sox.sourceforge.net) and
+  reopen the terminal. The installer warns if `sox` isn't on PATH.
+- **Recording is silent** — sox uses the `waveaudio` driver on Windows (set via
+  `MIC` at the top of `scribe.ahk`); if your default device isn't picked up, try a
+  specific one, e.g. `MIC := "-t waveaudio 0"` or `"-t waveaudio ""Mic Name"""`.
+- **Paste into an elevated app fails** — if the target app runs as admin and Scribe
+  doesn't, Windows (UIPI) blocks the synthetic Ctrl+V. Run Scribe as admin too, or
+  paste into a non-elevated window.
+- **Nothing happens on the hotkey** — another app may already own it; change
+  `RT_KEY` / `BATCH_KEY` (see above).
 
-1. **winget package IDs** — especially **sox** (`ChrisBagwell.SoX` may not exist in
-   your winget source). If `sox` isn't found, install it another way (`scoop install
-   sox`, or sox.sourceforge.net) and reopen the terminal.
-2. **`sox -d` default input device** — on Windows sox uses the `waveaudio` driver;
-   if recording fails, we may need `-t waveaudio -d` or a device name.
-3. **Global hotkey** — whether Ctrl+Shift+Space is captured without running AHK as
-   admin.
-4. **Paste** — Ctrl+V into the focused app (blocked only if the target app runs as
-   admin and this one doesn't — UIPI).
-5. **`.ahk` launch** — Start-Process on the `.ahk` relies on AutoHotkey being
-   installed and associated with `.ahk`.
+## Packaging (optional)
+
+`build.ps1` (run on Windows) freezes the Python side with PyInstaller and bundles
+sox + the icons into `dist\ScribeDictation\`, so end users need nothing
+pre-installed. `scribe.ahk` auto-detects that `bin\` and calls the frozen exes. See
+the header of `build.ps1` for the remaining steps (code-signing, an installer).
 
 ## Architecture
 

@@ -4,7 +4,7 @@
 ;  Scribe Dictation — Windows glue
 ;  Ctrl+Shift+Space : realtime — stream & paste each segment as you speak
 ;  Ctrl+Shift+B     : paragraph (fallback) — record, then transcribe the whole clip
-;  Tray dot: green = idle, red = recording. A credit balloon shows after each use.
+;  Tray dot: gray = idle, green = realtime, red = paragraph. Credit balloon after each use.
 ;  Transcription is done by the Python side (realtime engine / scribe_batch.py).
 ; ============================================================
 
@@ -25,12 +25,30 @@ engine  := repo "\realtime\scribe_stream.py"
 batch   := A_ScriptDir "\scribe_batch.py"
 creditsPy := A_ScriptDir "\scribe_credits.py"
 sox     := "sox"
+
+; A packaged build (see windows\build.ps1) ships frozen exes + sox in .\bin.
+; If they're present, call those; otherwise run the .py via the venv python
+; (dev mode — the command strings below are identical to the plain python call).
+bin := A_ScriptDir "\bin"
+if FileExist(bin "\scribe_stream.exe") {
+    engineCmd  := '"' bin '\scribe_stream.exe"'
+    batchCmd   := '"' bin '\scribe_batch.exe"'
+    creditsCmd := '"' bin '\scribe_credits.exe"'
+    sox        := bin "\sox.exe"
+    EnvSet("SCRIBE_SOX_PATH", sox)   ; so the frozen engine finds the bundled sox
+} else {
+    engineCmd  := '"' py '" "' engine '"'
+    batchCmd   := '"' py '" "' batch '"'
+    creditsCmd := '"' py '" "' creditsPy '"'
+}
+
 iconIdle := A_ScriptDir "\icon-idle.ico"   ; gray = idle
 iconLive := A_ScriptDir "\icon-live.ico"   ; green = realtime
 iconRec  := A_ScriptDir "\icon-rec.ico"    ; red = paragraph recording
 rawF    := A_Temp "\scribe_rec.raw"
 wavF    := A_Temp "\scribe_rec.wav"
 streamF := A_Temp "\scribe_stream.txt"
+rtErrF  := A_Temp "\scribe_stream_err.txt"  ; engine stderr, so failures surface
 batOutF := A_Temp "\scribe_batch_out.txt"
 credF   := A_Temp "\scribe_credits.txt"
 
@@ -38,6 +56,7 @@ state  := "idle"    ; idle | rt | batch
 rtPid  := 0
 recPid := 0
 lastLen := 0
+rtStopping := false ; guards the "engine died" check during a deliberate stop
 
 try TraySetIcon(iconIdle)
 A_IconTip := "Scribe — idle  (Ctrl+Shift+Space realtime · Ctrl+Shift+B paragraph)"
@@ -69,19 +88,24 @@ ToggleRealtime() {
 }
 
 StartRealtime() {
-    global state, rtPid, streamF, lastLen, py, engine, MIC, SILENCE, VAD, MAX_SECS, iconLive
+    global state, rtPid, streamF, rtErrF, lastLen, rtStopping, engineCmd, MIC, SILENCE, VAD, MAX_SECS, iconLive
     try FileDelete(streamF)
+    try FileDelete(rtErrF)
     lastLen := 0
+    rtStopping := false
     EnvSet("SCRIBE_SOX_INPUT", MIC)   ; tell the engine how to open the mic on Windows
-    Run('"' py '" "' engine '" --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD, , "Hide", &rtPid)
+    ; Route the engine's stderr to a file (via cmd /c) so failures — no key, sox
+    ; can't open the mic, 401, network — can be shown instead of vanishing.
+    Run(A_ComSpec ' /c "' engineCmd ' --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD ' 2> "' rtErrF '""', , "Hide", &rtPid)
     state := "rt"
     Active("listening (realtime)", iconLive)
     SetTimer(PollStream, 150)
     SetTimer(RtAutoStop, -MAX_SECS * 1000)
 }
 
-StopRealtime() {
-    global rtPid
+StopRealtime(reason := "") {
+    global rtPid, rtStopping
+    rtStopping := true          ; so PollStream's death-check doesn't double-fire
     SetTimer(PollStream, 0)
     SetTimer(RtAutoStop, 0)
     PollStream()   ; flush any last segment
@@ -90,22 +114,45 @@ StopRealtime() {
         rtPid := 0
     }
     Idle()
-    ShowCredits()
+    if reason != ""
+        TrayTip(reason, "Scribe error", 3)
+    else
+        ShowCredits()
+    rtStopping := false
 }
 
 PollStream() {
-    global streamF, lastLen
-    if !FileExist(streamF)
-        return
-    txt := FileRead(streamF, "UTF-8")
-    if StrLen(txt) > lastLen {
-        chunk := SubStr(txt, lastLen + 1)
-        lastLen := StrLen(txt)
-        Loop Parse chunk, "`n", "`r" {
-            line := Trim(A_LoopField)
-            if line != ""
-                PasteText(line " ")
+    global streamF, rtErrF, lastLen, rtPid, rtStopping
+    Critical            ; don't let the 150ms timer re-enter mid-paste (clipboard race)
+    if FileExist(streamF) {
+        txt := FileRead(streamF, "UTF-8")
+        if StrLen(txt) > lastLen {
+            chunk := SubStr(txt, lastLen + 1)
+            ; Consume only through the last newline; hold back any partial trailing
+            ; line so a poll landing mid-write can't split a multi-byte (CJK) char.
+            nl := InStr(chunk, "`n", , -1)
+            if nl {
+                ready := SubStr(chunk, 1, nl)
+                lastLen += nl
+                Loop Parse ready, "`n", "`r" {
+                    line := Trim(A_LoopField)
+                    if line != ""
+                        PasteText(line " ")
+                }
+            }
         }
+    }
+    ; Engine exited on its own (crash / fatal error)? Surface it, don't spin to MAX_SECS.
+    if !rtStopping && rtPid && !ProcessExist(rtPid) {
+        rtPid := 0
+        err := ""
+        if FileExist(rtErrF) {
+            Loop Parse FileRead(rtErrF, "UTF-8"), "`n", "`r" {
+                if InStr(A_LoopField, "SCRIBE-ERR")
+                    err := Trim(StrReplace(A_LoopField, "SCRIBE-ERR"))
+            }
+        }
+        StopRealtime(err != "" ? err : "realtime engine stopped — check the mic, key, or network (see README).")
     }
 }
 
@@ -127,14 +174,19 @@ ToggleBatch() {
 StartBatch() {
     global state, recPid, sox, MIC, rawF, MAX_SECS, iconRec
     try FileDelete(rawF)
-    Run(sox ' -q ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
+    try {
+        Run(sox ' -q ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
+    } catch {
+        TrayTip("Couldn't start sox — is it installed and on PATH? (see README)", "Scribe", 3)
+        return
+    }
     state := "batch"
     Active("recording (paragraph)", iconRec)
     SetTimer(BatchAutoStop, -MAX_SECS * 1000)
 }
 
 StopBatch() {
-    global recPid, sox, py, batch, rawF, wavF, batOutF, iconRec
+    global recPid, sox, batchCmd, rawF, wavF, batOutF, iconRec
     SetTimer(BatchAutoStop, 0)
     if recPid {
         RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
@@ -149,7 +201,7 @@ StopBatch() {
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
     try FileDelete(batOutF)
-    RunWait('"' py '" "' batch '" "' wavF '" "' batOutF '"', , "Hide")
+    RunWait(batchCmd ' "' wavF '" "' batOutF '"', , "Hide")
     text := ""
     if FileExist(batOutF)
         text := Trim(FileRead(batOutF, "UTF-8"), " `t`r`n")
@@ -172,11 +224,11 @@ BatchAutoStop() {
 
 ; ---------------- shared ----------------
 ShowCredits() {
-    global SHOW_CREDITS, py, creditsPy, credF
+    global SHOW_CREDITS, creditsCmd, credF
     if !SHOW_CREDITS
         return
     try FileDelete(credF)
-    RunWait('"' py '" "' creditsPy '" "' credF '"', , "Hide")
+    RunWait(creditsCmd ' "' credF '"', , "Hide")
     if FileExist(credF) {
         c := Trim(FileRead(credF, "UTF-8"), " `t`r`n")
         if c != ""

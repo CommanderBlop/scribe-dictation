@@ -12,3 +12,9 @@ __pycache__/
 # Tooling caches
 .mypy_cache/
 .ruff_cache/
+
+# Windows packaging output (build.ps1)
+windows/dist/
+windows/build/
+windows/.build-venv/
+*.spec

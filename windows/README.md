@@ -39,9 +39,26 @@ Two modes — click into any text box, then:
 - **Ctrl+Shift+B — paragraph** (fallback): record, press again to stop, and the whole
   clip is transcribed and pasted at once.
 
-The **tray dot** shows state — 🟢 green = idle, 🔴 red = recording — and a small
-balloon shows your **credits left** after each use. (F5 is "refresh" on Windows, so
-the keys aren't F5; change them at the top of `scribe.ahk`.)
+The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = paragraph
+recording — and a small balloon shows your **credits left** after each use.
+
+### Change the hotkeys
+
+Edit the top of `windows\scribe.ahk`:
+
+```ahk
+RT_KEY    := "^+Space"   ; realtime
+BATCH_KEY := "^+b"       ; paragraph
+```
+
+AutoHotkey notation: `^` = Ctrl, `+` = Shift, `!` = Alt, `#` = Win. So Ctrl+Alt+Space
+is `"^!Space"`, Ctrl+Shift+B is `"^+b"`. Save, then **quit from the tray and relaunch**
+(or re-run the installer) to apply.
+
+> Pick keys that don't clash with app shortcuts you use: **Ctrl+Shift+V** is
+> "paste without formatting" almost everywhere, and **Ctrl+Shift+B** toggles the
+> browser bookmarks bar / VS Code build — a global hotkey shadows those. `Ctrl+Alt+…`
+> combos tend to be the safest.
 
 ## Not needed on Windows
 

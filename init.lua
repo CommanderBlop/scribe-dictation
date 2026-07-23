@@ -423,17 +423,38 @@ end
 -- ---------- realtime streaming (Fn+F5) ----------
 -- Launches the Python engine; each finalized segment it prints is pasted at
 -- the cursor as you speak. A green menu-bar dot shows while streaming.
+--
+-- Pastes are queued and strictly serialized. The engine can emit several lines
+-- nearly at once (the pacing timer splits one commit into text + marker + text);
+-- overwriting the clipboard while an earlier ⌘V is still pending pastes the last
+-- line N times and loses the others, so each clipboard→⌘V cycle must finish
+-- before the clipboard changes again. Lines queued during a cycle are merged
+-- into the next one (same result as pasting them back-to-back).
+local rtQueue, rtPasting = {}, false
+local function rtDrain()
+  if rtPasting or #rtQueue == 0 then return end
+  local text = table.concat(rtQueue)
+  rtQueue = {}
+  hs.pasteboard.setContents(text)
+  if not hs.accessibilityState() then return end   -- text is on the clipboard for manual ⌘V
+  rtPasting = true
+  -- small delay so the focused app sees the new clipboard before ⌘V
+  hs.timer.doAfter(0.08, function()
+    hs.eventtap.keyStroke({"cmd"}, "v")
+    -- let the app consume this paste before the clipboard changes again
+    hs.timer.doAfter(0.12, function() rtPasting = false; rtDrain() end)
+  end)
+end
 local function rtPaste(line)
   line = line:gsub("[\1-\8\11-\31\127]", ""):gsub("%s+$", "")
   if line == "" then return end
-  hs.pasteboard.setContents(line)
-  if hs.accessibilityState() then
-    hs.timer.doAfter(0.08, function() hs.eventtap.keyStroke({"cmd"}, "v") end)
-  end
+  rtQueue[#rtQueue + 1] = line
+  rtDrain()
 end
 
 local function rtStop()
   if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
+  rtQueue = {}; rtPasting = false
   if rtTask then
     if rtTask:isRunning() then rtTask:terminate() end
     rtTask = nil
@@ -482,6 +503,7 @@ local function rtStart()
   rtTask = hs.task.new(M.pyProject .. "/.venv/bin/python",
     function()  -- on exit: clean up (idle timer too, in case it died on its own)
       rtTask = nil; rtBuf = ""
+      rtQueue = {}; rtPasting = false
       if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
       setState("idle")
     end,

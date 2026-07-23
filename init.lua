@@ -114,6 +114,7 @@ local SETTINGS_KEY = "scribe.settings"
 local function saveSettings()
   hs.settings.set(SETTINGS_KEY, {
     timer = M.timer, timerIntervalSecs = M.timerIntervalSecs, showCredits = M.showCredits,
+    realtimeKey = M.realtimeKey, toggleKey = M.toggleKey,
   })
 end
 do
@@ -122,7 +123,58 @@ do
     if s.timer ~= nil then M.timer = s.timer end
     if s.timerIntervalSecs then M.timerIntervalSecs = s.timerIntervalSecs end
     if s.showCredits ~= nil then M.showCredits = s.showCredits end
+    if type(s.realtimeKey) == "table" and s.realtimeKey.key then M.realtimeKey = s.realtimeKey end
+    if type(s.toggleKey) == "table" and s.toggleKey.key then M.toggleKey = s.toggleKey end
   end
+end
+
+-- Hotkey presets, chosen from the menu-bar and persisted like the toggles above.
+local RT_PRESETS = {
+  { label = "F5",       mods = {},               key = "f5" },
+  { label = "F6",       mods = {},               key = "f6" },
+  { label = "⌃⇧Space",  mods = {"ctrl","shift"}, key = "space" },
+  { label = "⌃⌥Space",  mods = {"ctrl","alt"},   key = "space" },
+  { label = "⌘⇧D",      mods = {"cmd","shift"},  key = "d" },
+}
+local BATCH_PRESETS = {
+  { label = "F4",       mods = {},               key = "f4" },
+  { label = "F3",       mods = {},               key = "f3" },
+  { label = "⌃⇧B",      mods = {"ctrl","shift"}, key = "b" },
+  { label = "⌃⌥B",      mods = {"ctrl","alt"},   key = "b" },
+}
+local rtHotkey, batchHotkey
+local function bindRealtime()
+  if rtHotkey then rtHotkey:delete(); rtHotkey = nil end
+  if M.realtimeKey then
+    rtHotkey = hs.hotkey.bind(M.realtimeKey.mods, M.realtimeKey.key, function() M.rtToggle() end)
+  end
+end
+local function bindParagraph()
+  if batchHotkey then batchHotkey:delete(); batchHotkey = nil end
+  batchHotkey = hs.hotkey.bind(M.toggleKey.mods, M.toggleKey.key, function() M.toggle() end)
+end
+local function keyEq(a, p)   -- does current binding `a` equal preset `p`? (mods as sets)
+  if not a or a.key ~= p.key then return false end
+  local am = a.mods or {}
+  if #am ~= #p.mods then return false end
+  local set = {}
+  for _, m in ipairs(am) do set[m] = true end
+  for _, m in ipairs(p.mods) do if not set[m] then return false end end
+  return true
+end
+local function setRealtimeKey(p)
+  M.realtimeKey = { mods = p.mods, key = p.key }; bindRealtime(); saveSettings()
+end
+local function setParagraphKey(p)
+  M.toggleKey = { mods = p.mods, key = p.key }; bindParagraph(); saveSettings()
+end
+local function presetItems(presets, current, setter)
+  local items = {}
+  for _, p in ipairs(presets) do
+    items[#items + 1] = { title = p.label, checked = keyEq(current, p),
+                          fn = function() setter(p) end }
+  end
+  return items
 end
 
 -- Menu-bar icon: always visible. The title shows state; the dropdown is a small
@@ -169,6 +221,9 @@ if menu then
         { title = "5 minutes", checked = M.timerIntervalSecs == 300,
           fn = function() M.timerIntervalSecs = 300; saveSettings() end },
       }},
+      { title = "-" },
+      { title = "Realtime hotkey",  menu = presetItems(RT_PRESETS, M.realtimeKey, setRealtimeKey) },
+      { title = "Paragraph hotkey", menu = presetItems(BATCH_PRESETS, M.toggleKey, setParagraphKey) },
       { title = "-" },
       { title = "Show credit balloon", checked = M.showCredits,
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },
@@ -391,13 +446,11 @@ function M.rtToggle()
   if rtTask then rtStop() elseif state == "idle" then rtStart() end
 end
 
--- Paragraph key (press to start, press again to stop) — whole utterance at once
-hs.hotkey.bind(M.toggleKey.mods, M.toggleKey.key, M.toggle)
-
--- Realtime streaming key — paste each segment as you speak
-if M.realtimeKey then
-  hs.hotkey.bind(M.realtimeKey.mods, M.realtimeKey.key, M.rtToggle)
-end
+-- Hotkeys — bound via helpers so the menu-bar submenus can rebind them live.
+-- Paragraph = press to start, press again to stop (whole utterance at once);
+-- realtime = paste each segment as you speak.
+bindParagraph()
+bindRealtime()
 
 hs.alert.show("Scribe loaded — Fn+F5 realtime · Fn+F4 paragraph")
 

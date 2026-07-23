@@ -66,6 +66,11 @@ LoadConfig()   ; override the CONFIG defaults above with any saved menu choices
 try TraySetIcon(iconIdle)
 A_IconTip := "Scribe — idle  (Ctrl+Shift+Space realtime · Ctrl+Shift+B paragraph)"
 
+; Hotkey presets, chosen from the tray menu (label, AHK key string). Persisted
+; like the toggles. AHK notation: ^=Ctrl +=Shift !=Alt #=Win.
+RT_PRESETS := [["Ctrl+Shift+Space", "^+Space"], ["Ctrl+Alt+Space", "^!Space"], ["Ctrl+Shift+D", "^+d"], ["Ctrl+Alt+D", "^!d"]]
+BATCH_PRESETS := [["Ctrl+Shift+B", "^+b"], ["Ctrl+Alt+B", "^!b"], ["Ctrl+Shift+G", "^+g"], ["Ctrl+Alt+G", "^!g"]]
+
 ; Right-click tray menu = a small settings panel; toggles persist to config.ini
 ; (in %LOCALAPPDATA%), so they survive restarts and `git pull` never clobbers them.
 intervalMenu := Menu()
@@ -73,20 +78,31 @@ intervalMenu.Add("1 minute", (*) => SetInterval(60))
 intervalMenu.Add("2 minutes", (*) => SetInterval(120))
 intervalMenu.Add("5 minutes", (*) => SetInterval(300))
 
+rtKeyMenu := Menu()
+for i, p in RT_PRESETS
+    rtKeyMenu.Add(p[1], SetRtKey.Bind(p[2]))
+batchKeyMenu := Menu()
+for i, p in BATCH_PRESETS
+    batchKeyMenu.Add(p[1], SetBatchKey.Bind(p[2]))
+
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Scribe Dictation", (*) => "")
 A_TrayMenu.Disable("Scribe Dictation")
 A_TrayMenu.Add()
 A_TrayMenu.Add("Pacing timer (practice)", (*) => ToggleTimer())
 A_TrayMenu.Add("Timer interval", intervalMenu)
+A_TrayMenu.Add()
+A_TrayMenu.Add("Realtime hotkey", rtKeyMenu)
+A_TrayMenu.Add("Paragraph hotkey", batchKeyMenu)
+A_TrayMenu.Add()
 A_TrayMenu.Add("Show credits", (*) => ToggleCredits())
 A_TrayMenu.Add()
 A_TrayMenu.Add("Set / update API key…", (*) => SetApiKey())
 A_TrayMenu.Add("Quit", (*) => ExitApp())
 RefreshTrayChecks()
 
-Hotkey(RT_KEY, (*) => ToggleRealtime())
-Hotkey(BATCH_KEY, (*) => ToggleBatch())
+Hotkey(RT_KEY, HotkeyRealtime)
+Hotkey(BATCH_KEY, HotkeyBatch)
 
 Idle() {
     global state, iconIdle
@@ -269,7 +285,7 @@ PasteText(txt) {
 
 ; ---------------- settings (tray menu + config.ini) ----------------
 LoadConfig() {
-    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS
+    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS, RT_KEY, BATCH_KEY
     if !FileExist(cfgFile)
         return
     TIMER := IniRead(cfgFile, "scribe", "timer", TIMER ? "1" : "0") = "1"
@@ -277,18 +293,23 @@ LoadConfig() {
     v := IniRead(cfgFile, "scribe", "timer_interval", TIMER_INTERVAL)
     if IsInteger(v) && Integer(v) > 0
         TIMER_INTERVAL := Integer(v)
+    RT_KEY := IniRead(cfgFile, "scribe", "rt_key", RT_KEY)
+    BATCH_KEY := IniRead(cfgFile, "scribe", "batch_key", BATCH_KEY)
 }
 
 SaveConfig() {
-    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS
+    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS, RT_KEY, BATCH_KEY
     try DirCreate(RegExReplace(cfgFile, "\\[^\\]+$"))   ; ensure the parent folder
     IniWrite(TIMER ? "1" : "0", cfgFile, "scribe", "timer")
     IniWrite(SHOW_CREDITS ? "1" : "0", cfgFile, "scribe", "show_credits")
     IniWrite(TIMER_INTERVAL, cfgFile, "scribe", "timer_interval")
+    IniWrite(RT_KEY, cfgFile, "scribe", "rt_key")
+    IniWrite(BATCH_KEY, cfgFile, "scribe", "batch_key")
 }
 
 RefreshTrayChecks() {
-    global TIMER, SHOW_CREDITS, TIMER_INTERVAL, intervalMenu
+    global TIMER, SHOW_CREDITS, TIMER_INTERVAL, RT_KEY, BATCH_KEY
+    global intervalMenu, rtKeyMenu, batchKeyMenu, RT_PRESETS, BATCH_PRESETS
     if TIMER
         A_TrayMenu.Check("Pacing timer (practice)")
     else
@@ -303,6 +324,48 @@ RefreshTrayChecks() {
         else
             intervalMenu.Uncheck(label)
     }
+    for i, p in RT_PRESETS {
+        if RT_KEY = p[2]
+            rtKeyMenu.Check(p[1])
+        else
+            rtKeyMenu.Uncheck(p[1])
+    }
+    for i, p in BATCH_PRESETS {
+        if BATCH_KEY = p[2]
+            batchKeyMenu.Check(p[1])
+        else
+            batchKeyMenu.Uncheck(p[1])
+    }
+}
+
+; Hotkey callbacks (variadic to swallow the hotkey-name arg AHK passes).
+HotkeyRealtime(*) => ToggleRealtime()
+HotkeyBatch(*)    => ToggleBatch()
+
+SetRtKey(newKey, *) {
+    global RT_KEY, BATCH_KEY
+    if newKey = BATCH_KEY {
+        TrayTip("That's already the paragraph hotkey — pick another.", "Scribe", 3)
+        return
+    }
+    try Hotkey(RT_KEY, HotkeyRealtime, "Off")   ; unbind the old
+    RT_KEY := newKey
+    try Hotkey(RT_KEY, HotkeyRealtime, "On")     ; bind the new
+    SaveConfig()
+    RefreshTrayChecks()
+}
+
+SetBatchKey(newKey, *) {
+    global RT_KEY, BATCH_KEY
+    if newKey = RT_KEY {
+        TrayTip("That's already the realtime hotkey — pick another.", "Scribe", 3)
+        return
+    }
+    try Hotkey(BATCH_KEY, HotkeyBatch, "Off")
+    BATCH_KEY := newKey
+    try Hotkey(BATCH_KEY, HotkeyBatch, "On")
+    SaveConfig()
+    RefreshTrayChecks()
 }
 
 ToggleTimer() {

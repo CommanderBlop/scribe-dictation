@@ -24,8 +24,9 @@ engine  := repo "\realtime\scribe_stream.py"
 batch   := A_ScriptDir "\scribe_batch.py"
 creditsPy := A_ScriptDir "\scribe_credits.py"
 sox     := "sox"
-iconIdle := A_ScriptDir "\icon-idle.ico"
-iconRec  := A_ScriptDir "\icon-rec.ico"
+iconIdle := A_ScriptDir "\icon-idle.ico"   ; gray = idle
+iconLive := A_ScriptDir "\icon-live.ico"   ; green = realtime
+iconRec  := A_ScriptDir "\icon-rec.ico"    ; red = paragraph recording
 rawF    := A_Temp "\scribe_rec.raw"
 wavF    := A_Temp "\scribe_rec.wav"
 streamF := A_Temp "\scribe_stream.txt"
@@ -52,9 +53,8 @@ Idle() {
     try TraySetIcon(iconIdle)
     A_IconTip := "Scribe — idle"
 }
-Active(tip) {
-    global iconRec
-    try TraySetIcon(iconRec)
+Active(tip, icon) {
+    try TraySetIcon(icon)
     A_IconTip := "Scribe — " tip
 }
 
@@ -68,13 +68,13 @@ ToggleRealtime() {
 }
 
 StartRealtime() {
-    global state, rtPid, streamF, lastLen, py, engine, MIC, SILENCE, VAD, MAX_SECS
+    global state, rtPid, streamF, lastLen, py, engine, MIC, SILENCE, VAD, MAX_SECS, iconLive
     try FileDelete(streamF)
     lastLen := 0
     EnvSet("SCRIBE_SOX_INPUT", MIC)   ; tell the engine how to open the mic on Windows
     Run('"' py '" "' engine '" --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD, , "Hide", &rtPid)
     state := "rt"
-    Active("listening (realtime)")
+    Active("listening (realtime)", iconLive)
     SetTimer(PollStream, 150)
     SetTimer(RtAutoStop, -MAX_SECS * 1000)
 }
@@ -124,16 +124,16 @@ ToggleBatch() {
 }
 
 StartBatch() {
-    global state, recPid, sox, MIC, rawF, MAX_SECS
+    global state, recPid, sox, MIC, rawF, MAX_SECS, iconRec
     try FileDelete(rawF)
     Run(sox ' -q -t ' MIC ' -c 1 -r 16000 -b 16 -e signed-integer -t raw "' rawF '"', , "Hide", &recPid)
     state := "batch"
-    Active("recording (paragraph)")
+    Active("recording (paragraph)", iconRec)
     SetTimer(BatchAutoStop, -MAX_SECS * 1000)
 }
 
 StopBatch() {
-    global recPid, sox, py, batch, rawF, wavF, batOutF
+    global recPid, sox, py, batch, rawF, wavF, batOutF, iconRec
     SetTimer(BatchAutoStop, 0)
     if recPid {
         RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
@@ -144,7 +144,7 @@ StopBatch() {
         TrayTip("No audio captured — is the microphone working? (sox)", "Scribe", 3)
         return
     }
-    Active("transcribing…")
+    Active("transcribing…", iconRec)
     try FileDelete(wavF)
     RunWait(sox ' -q -t raw -r 16000 -c 1 -b 16 -e signed-integer "' rawF '" "' wavF '"', , "Hide")
     try FileDelete(batOutF)

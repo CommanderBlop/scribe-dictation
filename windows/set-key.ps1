@@ -15,5 +15,9 @@ if ($key -notmatch '^sk_[A-Za-z0-9]+$') {
     exit 1
 }
 
-# Store via keyring; pass the key on stdin so it never lands on a command line.
-$key | & $py -c "import keyring,sys; keyring.set_password('scribe-dictation','api', sys.stdin.read().strip()); print('==> API key saved to Windows Credential Manager.')"
+# Store via keyring. Pass through an env var (not a stdin pipe: PowerShell's
+# stdin pipe to a native exe can hang the reader waiting for EOF).
+$env:_SCRIBE_KEY = $key
+& $py -c "import keyring,os; keyring.set_password('scribe-dictation','api', os.environ['_SCRIBE_KEY'])"
+Remove-Item Env:\_SCRIBE_KEY -ErrorAction SilentlyContinue
+Write-Host "==> API key saved to Windows Credential Manager."

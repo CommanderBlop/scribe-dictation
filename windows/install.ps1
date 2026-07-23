@@ -9,13 +9,20 @@ function Say($m){ Write-Host "==> $m" -ForegroundColor Cyan }
 # as this iex'd script — loading a .ps1 from disk is blocked by the default
 # "Restricted" execution policy.
 function Set-ScribeKey($PyExe) {
+    # Already stored? Keep it (don't re-prompt on re-runs).
+    $have = & $PyExe -c "import keyring; print('yes' if keyring.get_password('scribe-dictation','api') else 'no')" 2>$null
+    if ($have -eq 'yes') { Say "API key already in your Credential Manager - keeping it."; return }
     Write-Host "Get a key at  https://elevenlabs.io/app/api  (Developers -> API Keys, 'Speech to Text')."
     $key = Read-Host "Paste your ElevenLabs API key"
     if ($key -notmatch '^sk_[A-Za-z0-9]+$') {
         Write-Host "That doesn't look like an ElevenLabs key (sk_...). Skipped." -ForegroundColor Yellow
         return
     }
-    $key | & $PyExe -c "import keyring,sys; keyring.set_password('scribe-dictation','api', sys.stdin.read().strip())"
+    # Pass via env var, not a stdin pipe (PowerShell's stdin pipe to a native exe
+    # can hang the reader waiting for an EOF that never comes).
+    $env:_SCRIBE_KEY = $key
+    & $PyExe -c "import keyring,os; keyring.set_password('scribe-dictation','api', os.environ['_SCRIBE_KEY'])"
+    Remove-Item Env:\_SCRIBE_KEY -ErrorAction SilentlyContinue
     Say "API key saved to Windows Credential Manager."
 }
 

@@ -115,6 +115,19 @@ RefreshTrayChecks()
 Hotkey(RT_KEY, HotkeyRealtime)
 Hotkey(BATCH_KEY, HotkeyBatch)
 
+; Tray Quit / script reload while streaming or recording: AHK doesn't kill child
+; processes, which would orphan the engine (mic held open, credits burning, nothing
+; pasting). Kill them on the way out.
+OnExit(CleanupOnExit)
+CleanupOnExit(reason, code) {
+    global rtPid, recPid, stopF
+    if rtPid && ProcessExist(rtPid)
+        RunWait('taskkill /PID ' rtPid ' /T /F', , "Hide")
+    if recPid && ProcessExist(recPid)
+        RunWait('taskkill /PID ' recPid ' /T /F', , "Hide")
+    try FileDelete(stopF)
+}
+
 Idle() {
     global state, iconIdle, RT_KEY, BATCH_KEY
     state := "idle"

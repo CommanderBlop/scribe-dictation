@@ -35,12 +35,16 @@ files by default — the one-line installer sidesteps this by inlining the step.
 Two modes — click into any text box, then:
 
 - **Ctrl+Shift+Space — realtime** (primary): text is pasted segment-by-segment as you
-  speak; press again to stop.
+  speak; press again to stop. Stopping is **graceful**: the tray dot turns 🟡 amber
+  while whatever you said after your last pause is transcribed and pasted (usually
+  1–2 s) — nothing gets cut off. Press the hotkey again while amber to force-stop.
+  Keep your cursor in the target text box until the dot goes gray — the tail pastes
+  wherever focus is when it lands.
 - **Ctrl+Shift+B — recording** (fallback): record, press again to stop, and the whole
   clip is transcribed and pasted at once.
 
-The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = recording
-— and a small balloon shows your **credits left** after each use.
+The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = recording,
+🟡 amber = processing — and a small balloon shows your **credits left** after each use.
 
 **Right-click the tray icon** for a small settings menu: toggle the pacing timer and
 its interval, the credit balloon, and **Set / update API key** (opens the masked key

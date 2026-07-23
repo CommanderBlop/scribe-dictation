@@ -77,8 +77,9 @@ def build_url(commit_strategy: str, silence_secs: float, vad_threshold: float,
         "commit_strategy": commit_strategy,  # "vad" or "manual"
         "include_language_detection": "true",
     }
-    # Word-level timestamps power the pacing timer: they let us place a minute
-    # marker at the exact word instead of guessing between segments.
+    # The pacing timer needs per-word timestamps to credit each word to the minute it
+    # was spoken; the committed_transcript_with_timestamps `words` array is empty
+    # unless this is set (verified against the live API).
     if include_timestamps:
         params["include_timestamps"] = "true"
     # vad_silence_threshold_secs: lower -> commits after a shorter pause -> text
@@ -110,8 +111,10 @@ async def pump_audio(ws, proc):
 async def receive(ws, emit, outfh=None, interval=None):
     """Surface transcripts. `emit` -> plain finalized lines for piping/out-file.
 
-    If `interval` (seconds) is set, insert a pacing marker every `interval` of
-    audio time, split at the exact word using the committed word timestamps.
+    If `interval` (seconds) is set, insert a pacing marker ([M:SS · N words]) every
+    `interval`. Placement uses each word's absolute timestamp, so a word is credited
+    to the interval in which it was *spoken*, not when the (possibly delayed) commit
+    arrives — and a late commit spanning several intervals is split at the right word.
     """
     last = None
     last_beat = 0.0
@@ -161,8 +164,9 @@ async def receive(ws, emit, outfh=None, interval=None):
                 last = text
                 words = m.get("words") or []
                 if next_mark is not None and words:
-                    # Split this segment at each minute boundary it crosses, using
-                    # the per-word audio-time so the marker lands on the right word.
+                    # Split this segment at each interval boundary it crosses, using
+                    # each word's absolute audio-time so the marker lands on the right
+                    # word and the count reflects what was actually said that minute.
                     bucket = []
                     for w in words:
                         st = w.get("start")
@@ -182,7 +186,7 @@ async def receive(ws, emit, outfh=None, interval=None):
                         surface(seg)
                         words_this_min += count_words(seg)
                 elif emit:
-                    print(text, flush=True)          # one plain line -> Hammerspoon
+                    print(text, flush=True)          # one plain line -> the glue
                     if outfh:
                         outfh.write(text + "\n")
                         outfh.flush()
@@ -217,7 +221,7 @@ async def main():
                     help="also append each finalized line here (for the Windows/AHK glue)")
     ap.add_argument("--timer", action="store_true",
                     help="practice mode: insert a pacing marker ([M:SS · N words]) every "
-                         "--timer-interval seconds, split at the exact word")
+                         "--timer-interval seconds, placed by word timestamp")
     ap.add_argument("--timer-interval", type=float, default=60.0, dest="timer_interval",
                     help="seconds between pacing markers when --timer is set (default 60)")
     args = ap.parse_args()

@@ -242,6 +242,7 @@ local function dotIcon(r, g, b, a)
            fillColor = { red = r, green = g, blue = b, alpha = a } }
   local img = c:imageFromCanvas()
   c:delete()
+  img:template(false)   -- keep the color; a template image renders monochrome (all gray)
   return img
 end
 local DOTS = {   -- same low-saturation colors as windows/icon-*.ico
@@ -256,7 +257,7 @@ local function setState(s)
   if not menu then return end
   menu:returnToMenuBar()
   menu:setTitle("")
-  menu:setIcon(DOTS[s] or DOTS.idle)
+  menu:setIcon(DOTS[s] or DOTS.idle, false)   -- false = not a template, so color shows
 end
 
 -- Prompt for a new API key (masked) and store it in the Keychain — same entry
@@ -491,7 +492,7 @@ local function rtStart()
     return
   end
   rtBuf = ""
-  if menu then menu:returnToMenuBar(); menu:setTitle(""); menu:setIcon(DOTS.realtime) end
+  if menu then menu:returnToMenuBar(); menu:setTitle(""); menu:setIcon(DOTS.realtime, false) end
   local rtArgs = {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
     "--silence", tostring(M.realtimeSilenceSecs),
     "--vad-threshold", tostring(M.realtimeVadThreshold)}

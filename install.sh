@@ -73,7 +73,11 @@ chmod 600 "$DEST"
 if security find-generic-password -s elevenlabs-api -w >/dev/null 2>&1; then
   say "API key already in your Keychain — keeping it."
 else
-  bash "$REPO/set-key.sh" || say "No key yet — run 'bash $REPO/set-key.sh' any time to set it."
+  # No prompt here — the menu-bar dot has "Set / Update API key…" (a masked
+  # dialog that stores to the Keychain and reloads), which is friendlier than
+  # pasting a secret into a terminal mid-install.
+  say "No API key yet — after install, click the menu-bar ⚪ → Set / Update API key…"
+  say "(terminal alternative: bash $REPO/set-key.sh — both store it in your Keychain)"
 fi
 
 # --- 6. realtime mode (the default Fn+F5 experience) ----------------------

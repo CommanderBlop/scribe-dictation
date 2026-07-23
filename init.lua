@@ -240,8 +240,8 @@ end
 -- Menu-bar icon: always visible. State is a small muted dot — drawn (not an emoji),
 -- so it's soft/semi-transparent and matches the Windows tray dots exactly. The
 -- dropdown is a settings panel whose toggles persist via hs.settings (no file edits).
-local function dotIcon(r, g, b, a)
-  local sz = 14
+local function dotIcon(r, g, b, a, sz)
+  sz = sz or 14
   local c = hs.canvas.new{ x = 0, y = 0, w = sz, h = sz }
   c[1] = { type = "circle", action = "fill",
            center = { x = sz / 2, y = sz / 2 }, radius = sz / 2 - 1,
@@ -257,6 +257,19 @@ local DOTS = {   -- same colors as windows/icon-*.ico (soft, but a touch more vi
   recording = dotIcon(223 / 255, 94 / 255, 94 / 255, 0.95),    -- red
   working   = dotIcon(228 / 255, 176 / 255, 72 / 255, 0.95),   -- amber
 }
+-- Alert look: as close to the Spotlight "frosted card" feel as hs.alert allows
+-- (real vibrancy/blur isn't exposed) — translucent dark card, borderless, soft
+-- corners, system font at a calmer size. Applies to every alert we show.
+for k, v in pairs({
+  fillColor       = { white = 0.10, alpha = 0.80 },
+  strokeWidth     = 0,
+  strokeColor     = { alpha = 0 },
+  radius          = 14,
+  textSize        = 17,
+  fadeInDuration  = 0.10,
+  fadeOutDuration = 0.25,
+}) do hs.alert.defaultStyle[k] = v end
+
 local menu = hs.menubar.new(true)
 local function setState(s)
   state = s
@@ -281,7 +294,12 @@ local function setApiKey()
   local user = os.getenv("USER") or ""
   local _, wrote = hs.execute("/usr/bin/security add-generic-password -a '" .. user ..
     "' -s '" .. M.keychainService .. "' -T /usr/bin/security -w '" .. key .. "' -U 2>/dev/null")
-  if wrote then M.apiKey = key; hs.alert.show("API key saved.")
+  if wrote then
+    M.apiKey = key
+    -- Reload so everything (onboarding self-check included) picks the key up
+    -- immediately — no "why does it still say no key" moment.
+    hs.alert.show("API key saved — reloading…")
+    hs.timer.doAfter(0.8, hs.reload)
   else hs.alert.show("Couldn't write to the Keychain.") end
 end
 
@@ -330,7 +348,7 @@ if menu then
           saveSettings()
         end },
       { title = "Reload config", fn = function() hs.reload() end },
-      { title = "Quit Scribe", fn = quitScribe },
+      { title = "Quit Scribe Dictation", fn = quitScribe },
     }
   end)
 end
@@ -622,15 +640,16 @@ hs.shutdownCallback = function()
   if recTask and recTask:isRunning() then recTask:terminate() end
 end
 
-hs.alert.show("Scribe loaded — " .. fmtKey(M.realtimeKey) .. " realtime · " ..
-              fmtKey(M.toggleKey) .. " recording")
+hs.alert.showWithImage("Scribe Dictation loaded — " .. fmtKey(M.realtimeKey) ..
+                       " realtime · " .. fmtKey(M.toggleKey) .. " recording",
+                       dotIcon(76 / 255, 182 / 255, 109 / 255, 0.95, 44))
 
 -- Onboarding self-check: if setup is incomplete, say exactly what's missing
 -- instead of failing silently on the first keypress. Only alerts on problems.
 hs.timer.doAfter(0.6, function()
   local todo = {}
   if not M.apiKey:match("^sk_") then
-    todo[#todo + 1] = "API key not set — run  bash set-key.sh"
+    todo[#todo + 1] = "API key not set — menu-bar ⚪ → Set / Update API key…"
   end
   if not hs.accessibilityState() then
     todo[#todo + 1] = "Accessibility not granted (System Settings → Privacy)"

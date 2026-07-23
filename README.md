@@ -170,15 +170,17 @@ cp init.lua ~/.hammerspoon/init.lua
 
 Create a key at **[elevenlabs.io/app/api](https://elevenlabs.io/app/api)** (Developers → API Keys)
 (it needs the **Speech to Text** permission; add **User → Read** for the credit
-toast). Then store it — from the repo folder:
+toast). Then store it the easy way: click the **menu-bar ⚪ → Set / Update API
+key…** — a masked dialog saves it to your macOS **Keychain** (encrypted) and
+reloads the config so it's live immediately. Same place to change it later.
+
+Terminal alternative (same Keychain entry) — from the repo folder:
 
 ```bash
 bash set-key.sh
 ```
 
-It validates the key and saves it to your macOS **Keychain** (encrypted), which
-`init.lua` reads automatically. **To change the key later, just run `set-key.sh`
-again** — nothing else to touch. (Prefer not to use the Keychain? See
+(Prefer not to use the Keychain? See
 [Store the key once](#store-the-key-once) for the env-var and hardcode options.)
 
 #### 4. Launch Hammerspoon and grant permissions
@@ -231,8 +233,8 @@ Pick one of the two "set once" options below — Keychain is the most secure.
 
 ### Keychain — recommended (encrypted, app-scoped)
 
-**`set-key.sh` already does this for you** (the installer runs it). To do it by
-hand, or to change the key later:
+**The menu-bar ⚪ → Set / Update API key… does this for you** (so does
+`set-key.sh`). To do it by hand, or to change the key later:
 
 ```bash
 bash set-key.sh

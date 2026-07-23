@@ -12,20 +12,11 @@ function Set-ScribeKey($PyExe) {
     # Already stored? Keep it (don't re-prompt on re-runs).
     $have = & $PyExe -c "import keyring; print('yes' if keyring.get_password('scribe-dictation','api') else 'no')" 2>$null
     if ($have -eq 'yes') { Say "API key already in your Credential Manager - keeping it."; return }
-    Write-Host "Get a key at  https://elevenlabs.io/app/api  (Developers -> API Keys, 'Speech to Text')."
-    # -AsSecureString so the pasted key isn't echoed to the console / scrollback.
-    $sec = Read-Host "Paste your ElevenLabs API key" -AsSecureString
-    $key = [System.Net.NetworkCredential]::new('', $sec).Password
-    if ($key -notmatch '^sk_[A-Za-z0-9]+$') {
-        Write-Host "That doesn't look like an ElevenLabs key (sk_...). Skipped." -ForegroundColor Yellow
-        return
-    }
-    # Pass via env var, not a stdin pipe (PowerShell's stdin pipe to a native exe
-    # can hang the reader waiting for an EOF that never comes).
-    $env:_SCRIBE_KEY = $key
-    & $PyExe -c "import keyring,os; keyring.set_password('scribe-dictation','api', os.environ['_SCRIBE_KEY'])"
-    Remove-Item Env:\_SCRIBE_KEY -ErrorAction SilentlyContinue
-    Say "API key saved to Windows Credential Manager."
+    # No prompt here — the tray menu has "Set / Update API key" (a masked dialog
+    # that stores to the Credential Manager), which is friendlier than pasting a
+    # secret into a terminal mid-install.
+    Say "No API key yet - after install, right-click the tray dot -> Set / Update API key."
+    Say "Get a key at https://elevenlabs.io/app/api (Developers -> API Keys, 'Speech to Text')."
 }
 
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {

@@ -108,8 +108,13 @@ async def pump_audio(ws, proc):
         pass
 
 
-async def receive(ws, emit, outfh=None, interval=None):
+async def receive(ws, emit, outfh=None, interval=None, drain=None):
     """Surface transcripts. `emit` -> plain finalized lines for piping/out-file.
+
+    `drain` (dict with "pending" flag + "evt" asyncio.Event) lets main() flush the
+    tail on graceful stop: "pending" tracks whether speech has arrived since the
+    last commit, and "evt" fires on every committed frame so the drain knows the
+    forced flush has come back.
 
     If `interval` (seconds) is set, insert a pacing marker ([M:SS · N words]) every
     `interval`. Placement uses each word's absolute timestamp, so a word is credited
@@ -144,6 +149,8 @@ async def receive(ws, emit, outfh=None, interval=None):
                 print(f"● session {m.get('session_id', '')[:8]} — speak now",
                       file=sys.stderr, flush=True)
             elif t == "partial_transcript":
+                if drain is not None and m.get("text"):
+                    drain["pending"] = True   # speech seen since the last commit
                 if emit:
                     # Heartbeat to stderr (throttled ~1/s) so the Hammerspoon
                     # idle-timer knows speech is still coming between commits.
@@ -159,6 +166,9 @@ async def receive(ws, emit, outfh=None, interval=None):
             # the richer one and drop consecutive duplicates, so every finalized
             # segment surfaces exactly once.
             elif t == "committed_transcript_with_timestamps":
+                if drain is not None:
+                    drain["pending"] = False
+                    drain["evt"].set()        # the flush (or a VAD commit) landed
                 text = (m.get("text") or "").strip()
                 if not text or text == last:
                     continue
@@ -217,9 +227,22 @@ async def receive(ws, emit, outfh=None, interval=None):
                 detail = m.get("error") or m.get("message") or t
                 print(f"SCRIBE-ERR server: {detail}", file=sys.stderr, flush=True)
     except websockets.ConnectionClosed as e:
-        if e.code not in (1000, 1001):  # not a normal close
+        # A deliberate drain closes the socket ourselves — whatever close code the
+        # server race produces then, it isn't an error worth surfacing.
+        if e.code not in (1000, 1001) and not (drain or {}).get("closing"):
             print(f"[connection closed {e.code}] {e.reason or ''}".rstrip(),
                   file=sys.stderr, flush=True)
+
+
+async def watch_stop(stop_path, proc):
+    """Graceful-stop trigger: when the glue creates `stop_path`, stop the mic (sox).
+    pump_audio then drains sox's remaining buffered audio and finishes — main()'s
+    cue to flush the un-committed tail before closing. A file (not a signal) so the
+    same mechanism works on Windows, where AHK can't signal a hidden process."""
+    while not os.path.exists(stop_path):
+        await asyncio.sleep(0.15)
+    if proc.returncode is None:
+        proc.terminate()
 
 
 async def main():
@@ -240,6 +263,10 @@ async def main():
                          "--timer-interval seconds, placed by word timestamp")
     ap.add_argument("--timer-interval", type=float, default=60.0, dest="timer_interval",
                     help="seconds between pacing markers when --timer is set (default 60)")
+    ap.add_argument("--stop-file", default=None, dest="stop_file",
+                    help="graceful stop: when this file appears, stop the mic, flush "
+                         "the not-yet-committed tail of speech, emit it, then exit "
+                         "(instead of cutting it off)")
     args = ap.parse_args()
 
     key = os.environ.get("ELEVENLABS_API_KEY")
@@ -286,14 +313,52 @@ async def main():
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
                                       max_size=None) as ws:
             pump = asyncio.create_task(pump_audio(ws, proc))
-            recv = asyncio.create_task(receive(ws, args.emit, outfh, interval))
-            # Stop as soon as either side ends (sox dying ends pump -> we exit,
-            # rather than blocking forever waiting for transcripts).
+            drain = {"pending": False, "evt": asyncio.Event()}
+            recv = asyncio.create_task(receive(ws, args.emit, outfh, interval, drain))
+            stopw = (asyncio.create_task(watch_stop(args.stop_file, proc))
+                     if args.stop_file else None)
             done, pending = await asyncio.wait({pump, recv},
                                                return_when=asyncio.FIRST_COMPLETED)
-            for task in pending:
-                task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
+            if pump in done and recv not in done:
+                # Mic input ended (graceful stop via --stop-file, or sox died).
+                # Don't cut off what was said but not yet committed: force-commit
+                # it server-side (empty chunk + commit flag — works under VAD too),
+                # wait for the final transcript(s), then close so recv ends cleanly.
+                try:
+                    drain["evt"].clear()
+                    await ws.send(json.dumps({
+                        "message_type": "input_audio_chunk", "audio_base_64": "",
+                        "commit": True, "sample_rate": SAMPLE_RATE}))
+                    hard = time.monotonic() + 8.0          # overall drain cap
+                    to = 6.0 if drain["pending"] else 1.2  # nothing in flight -> quick
+                    while True:
+                        drain["evt"].clear()
+                        try:
+                            await asyncio.wait_for(
+                                drain["evt"].wait(),
+                                timeout=min(to, hard - time.monotonic()))
+                        except (asyncio.TimeoutError, ValueError):
+                            break
+                        to = 0.8   # a commit landed; brief window for a follow-up
+                except websockets.ConnectionClosed:
+                    pass
+                drain["closing"] = True
+                try:
+                    await ws.close()
+                except websockets.WebSocketException:
+                    pass
+                try:
+                    await asyncio.wait_for(recv, timeout=3.0)
+                except asyncio.TimeoutError:
+                    recv.cancel()
+                    await asyncio.gather(recv, return_exceptions=True)
+            else:
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+            if stopw:
+                stopw.cancel()
+                await asyncio.gather(stopw, return_exceptions=True)
             for task in done:
                 exc = task.exception()
                 if exc:

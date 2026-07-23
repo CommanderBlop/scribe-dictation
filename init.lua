@@ -453,19 +453,29 @@ local function rtPaste(line)
   rtDrain()
 end
 
+-- Graceful stop: don't cut off speech that hasn't come back from the server yet.
+-- Creating the stop file tells the engine to stop the mic, force-commit the
+-- un-transcribed tail, emit it (pasted like any other line), then exit. The
+-- amber "working" dot shows while that last flush is in flight; the task's exit
+-- callback does the final cleanup. A second press while amber force-kills.
+local RT_STOP_FILE = "/tmp/scribe_rt_stop"
+local rtStopTimer            -- force-kill fallback if the engine wedges mid-drain
 local function rtStop()
-  if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
-  rtQueue = {}; rtPasting = false
-  if rtTask then
+  if not rtTask then return end
+  if state == "working" then                    -- already draining: force it now
     if rtTask:isRunning() then rtTask:terminate() end
-    rtTask = nil
-    if rtStartTime > 0 then
-      updateUsage(hs.timer.secondsSinceEpoch() - rtStartTime, M.creditsPerMinuteRealtime)
-    end
+    return
   end
-  rtStartTime = 0
-  rtBuf = ""
-  setState("idle")
+  if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
+  setState("working")                           -- amber: finishing the last words
+  local f = io.open(RT_STOP_FILE, "w")
+  if f then f:close()
+  else                                          -- can't signal: old hard stop
+    if rtTask:isRunning() then rtTask:terminate() end
+  end
+  rtStopTimer = hs.timer.doAfter(8, function()
+    if rtTask and rtTask:isRunning() then rtTask:terminate() end
+  end)
 end
 
 -- Restart the inactivity clock; fires rtStop + a note if no new text arrives.
@@ -492,20 +502,29 @@ local function rtStart()
     return
   end
   rtBuf = ""
+  os.remove(RT_STOP_FILE)   -- a stale stop file would end the new stream instantly
   if menu then menu:returnToMenuBar(); menu:setTitle(""); menu:setIcon(DOTS.realtime, false) end
   local rtArgs = {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
     "--silence", tostring(M.realtimeSilenceSecs),
-    "--vad-threshold", tostring(M.realtimeVadThreshold)}
+    "--vad-threshold", tostring(M.realtimeVadThreshold),
+    "--stop-file", RT_STOP_FILE}
   if M.timer then
     rtArgs[#rtArgs + 1] = "--timer"
     rtArgs[#rtArgs + 1] = "--timer-interval"
     rtArgs[#rtArgs + 1] = tostring(M.timerIntervalSecs)
   end
   rtTask = hs.task.new(M.pyProject .. "/.venv/bin/python",
-    function()  -- on exit: clean up (idle timer too, in case it died on its own)
+    function()  -- on exit (after a graceful drain, or the engine dying): clean up.
+      -- rtQueue/rtPasting are left alone — the last flushed lines may still be
+      -- mid-paste-cycle, and the serialized queue finishes them on its own.
       rtTask = nil; rtBuf = ""
-      rtQueue = {}; rtPasting = false
+      if rtStopTimer then rtStopTimer:stop(); rtStopTimer = nil end
       if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
+      os.remove(RT_STOP_FILE)
+      if rtStartTime > 0 then
+        updateUsage(hs.timer.secondsSinceEpoch() - rtStartTime, M.creditsPerMinuteRealtime)
+      end
+      rtStartTime = 0
       setState("idle")
     end,
     function(_, stdout, stderr)       -- stream stdout: paste each complete line

@@ -86,6 +86,7 @@ Copy-Item (Join-Path $win "scribe.ahk") $dist
 Copy-Item (Join-Path $win "icon-idle.ico") $dist
 Copy-Item (Join-Path $win "icon-live.ico") $dist
 Copy-Item (Join-Path $win "icon-rec.ico")  $dist
+Copy-Item (Join-Path $win "icon-work.ico") $dist
 Copy-Item (Join-Path $win "README.md")     $dist -ErrorAction SilentlyContinue
 
 # ---- optional: compile scribe.ahk to a standalone scribe.exe --------------

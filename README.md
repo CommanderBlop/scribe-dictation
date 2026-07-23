@@ -300,6 +300,13 @@ Press once to start, press again to stop. The two modes are mutually exclusive �
 while one is active, the other key is ignored. 🔴/⏳ shows in the menu bar for
 recording mode, 🟢 for realtime.
 
+Stopping realtime is **graceful**: the dot turns 🟡 amber while whatever you said
+after your last pause is transcribed and pasted (usually 1–2 s), then goes gray.
+Nothing you said before pressing stop is cut off. Pressing the hotkey again while
+amber force-stops immediately (drops that tail); a wedged stop force-kills itself
+after 8 s. Keep your cursor in the target text field until the dot goes gray —
+the tail pastes wherever focus is when it lands.
+
 ### About the Fn+F5 key
 
 On keyboards where the function row is media keys (the default), **single F5** is
@@ -350,11 +357,12 @@ Scribe worth using.
 > and a `git pull` won't reset them); `M.timer` / `M.timerIntervalSecs` are just the
 > first-run defaults. The marker is placed at the exact word where the minute ticks
 > (via the API's word timestamps), so per-minute counts are accurate; it appears when
-> that segment commits (on your next pause), not exactly on the second. Off by default
+> that segment commits (on your next pause), not exactly on the second. Toggle and
+> interval changes apply the *next* time you start realtime. Off by default
 > since it writes markers into your text.
 
 > **Menu-bar panel & reopening.** The menu-bar dot (⚪ idle · 🟢 realtime · 🔴
-> recording) is a small settings panel — the toggles above plus **Set / update API
+> recording · 🟡 processing) is a small settings panel — the toggles above plus **Set / update API
 > key…** (a masked prompt that writes to your Keychain, picked up on the next
 > dictation). If you ever quit Hammerspoon, reopen **Hammerspoon** (Spotlight →
 > "Hammerspoon") — it reloads this config on launch. Tick Hammerspoon → Preferences →

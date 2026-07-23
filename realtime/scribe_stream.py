@@ -310,8 +310,10 @@ async def main():
         die(f"could not start sox ({SOX}): {e}")
 
     try:
+        # close_timeout: bound the close handshake (library default 10s) so a stalled
+        # network can't push a graceful stop past the glues' 8s force-kill watchdogs.
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
-                                      max_size=None) as ws:
+                                      max_size=None, close_timeout=2) as ws:
             pump = asyncio.create_task(pump_audio(ws, proc))
             drain = {"pending": False, "evt": asyncio.Event()}
             recv = asyncio.create_task(receive(ws, args.emit, outfh, interval, drain))
@@ -384,11 +386,14 @@ async def main():
         if proc.returncode is None:
             proc.terminate()
         await proc.wait()
-        # If sox failed (not a normal 0 / our SIGTERM), surface its error.
+        # If sox failed (not a normal 0 / our SIGTERM), surface its error with the
+        # SCRIBE-ERR tag so the glues show the real cause (mic unplugged/denied)
+        # instead of silently going idle.
         if proc.returncode not in (0, None, -15) and proc.stderr:
             err = (await proc.stderr.read()).decode(errors="replace").strip()
             if err:
-                print(f"[sox] {err}", file=sys.stderr)
+                print(f"SCRIBE-ERR sox: {err.splitlines()[-1]}", file=sys.stderr,
+                      flush=True)
 
 
 if __name__ == "__main__":

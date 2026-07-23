@@ -432,12 +432,23 @@ end
 -- before the clipboard changes again. Lines queued during a cycle are merged
 -- into the next one (same result as pasting them back-to-back).
 local rtQueue, rtPasting = {}, false
+local rtWarnedAX = false   -- one no-Accessibility warning per session, not per line
 local function rtDrain()
   if rtPasting or #rtQueue == 0 then return end
+  if not hs.accessibilityState() then
+    -- Can't auto-paste. Keep the queue: the clipboard accumulates the WHOLE
+    -- session, so one manual ⌘V recovers everything instead of just the last line.
+    hs.pasteboard.setContents(table.concat(rtQueue))
+    if not rtWarnedAX then
+      rtWarnedAX = true
+      hs.alert.show("Grant Accessibility to Hammerspoon to auto-paste.\n" ..
+                    "Dictation is accumulating on the clipboard — press ⌘V.", 5)
+    end
+    return
+  end
   local text = table.concat(rtQueue)
   rtQueue = {}
   hs.pasteboard.setContents(text)
-  if not hs.accessibilityState() then return end   -- text is on the clipboard for manual ⌘V
   rtPasting = true
   -- small delay so the focused app sees the new clipboard before ⌘V
   hs.timer.doAfter(0.08, function()
@@ -449,7 +460,9 @@ end
 local function rtPaste(line)
   line = line:gsub("[\1-\8\11-\31\127]", ""):gsub("%s+$", "")
   if line == "" then return end
-  rtQueue[#rtQueue + 1] = line
+  -- Trailing space so segments don't glue together ("there.How") — the engine
+  -- strips each segment's whitespace, and the Windows glue pastes `line " "` too.
+  rtQueue[#rtQueue + 1] = line .. " "
   rtDrain()
 end
 
@@ -463,6 +476,7 @@ local rtStopTimer            -- force-kill fallback if the engine wedges mid-dra
 local function rtStop()
   if not rtTask then return end
   if state == "working" then                    -- already draining: force it now
+    rtQueue = {}   -- force = drop the undelivered tail, don't leak it into a new session
     if rtTask:isRunning() then rtTask:terminate() end
     return
   end
@@ -502,6 +516,8 @@ local function rtStart()
     return
   end
   rtBuf = ""
+  rtQueue = {}          -- never carry leftover lines from a force-killed session
+  rtWarnedAX = false
   os.remove(RT_STOP_FILE)   -- a stale stop file would end the new stream instantly
   if menu then menu:returnToMenuBar(); menu:setTitle(""); menu:setIcon(DOTS.realtime, false) end
   local rtArgs = {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
@@ -569,6 +585,13 @@ end
 -- realtime = paste each segment as you speak.
 bindRecording()
 bindRealtime()
+
+-- "Reload config" / quitting Hammerspoon while streaming or recording would leak
+-- the child process (mic held open); shut them down first. Runs on hs.reload too.
+hs.shutdownCallback = function()
+  if rtTask and rtTask:isRunning() then rtTask:terminate() end
+  if recTask and recTask:isRunning() then recTask:terminate() end
+end
 
 hs.alert.show("Scribe loaded — " .. fmtKey(M.realtimeKey) .. " realtime · " ..
               fmtKey(M.toggleKey) .. " recording")

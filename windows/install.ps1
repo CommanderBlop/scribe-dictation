@@ -76,4 +76,4 @@ if ($ahk) {
 
 Write-Host ""
 Write-Host "Done. Click into any text box, press Ctrl+Shift+Space, talk, press again — text appears at your cursor." -ForegroundColor Green
-Write-Host "Rotate the key any time:  & '$repo\windows\set-key.ps1'"
+Write-Host "Rotate the key any time:  powershell -ExecutionPolicy Bypass -File `"$repo\windows\set-key.ps1`""

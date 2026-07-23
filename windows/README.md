@@ -72,13 +72,11 @@ So the main challenge was scaling the pipeline …
 ⏱ 2:00 · 118 words
 ```
 
-It's **off by default** (it writes markers into your text). Turn it on at the top of
-`scribe.ahk`, then quit from the tray and relaunch:
-
-```ahk
-TIMER          := true   ; enable pacing markers
-TIMER_INTERVAL := 60     ; seconds between markers (e.g. 300 for 5-minute marks)
-```
+It's **off by default** (it writes markers into your text). Turn it on from the
+**tray menu** — right-click the Scribe tray icon → **Pacing timer (practice)**, and
+pick **Timer interval → 1 / 2 / 5 minutes**. Your choice is saved to
+`%LOCALAPPDATA%\ScribeDictation\config.ini`, so it survives restarts and a `git pull`
+never overwrites it. (It applies to the *next* time you start realtime.)
 
 The marker is placed at the exact word where the minute ticks (using the API's word
 timestamps), so per-minute counts are accurate — but since a segment only finalizes

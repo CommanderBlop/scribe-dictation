@@ -108,17 +108,54 @@ local rtStartTime = 0           -- realtime stream start (for cost estimate)
 local rtIdleTimer = nil         -- auto-close-on-inactivity timer
 local state = "idle"      -- idle | recording | working
 
--- Menu-bar icon: created on demand, only visible while active.
-local menu = hs.menubar.new(false)   -- start hidden
+-- Persisted user toggles (survive reloads without editing this file). The M.*
+-- values above are defaults; anything chosen in the menu-bar menu overrides them.
+local SETTINGS_KEY = "scribe.settings"
+local function saveSettings()
+  hs.settings.set(SETTINGS_KEY, {
+    timer = M.timer, timerIntervalSecs = M.timerIntervalSecs, showCredits = M.showCredits,
+  })
+end
+do
+  local s = hs.settings.get(SETTINGS_KEY)
+  if type(s) == "table" then
+    if s.timer ~= nil then M.timer = s.timer end
+    if s.timerIntervalSecs then M.timerIntervalSecs = s.timerIntervalSecs end
+    if s.showCredits ~= nil then M.showCredits = s.showCredits end
+  end
+end
+
+-- Menu-bar icon: always visible. The title shows state; the dropdown is a small
+-- settings panel whose toggles persist via hs.settings (no file editing).
+local menu = hs.menubar.new(true)
 local function setState(s)
   state = s
   if not menu then return end
-  if s == "idle" then
-    menu:removeFromMenuBar()
-  else
-    menu:returnToMenuBar()
-    menu:setTitle(s == "recording" and "🔴" or "⏳")
-  end
+  menu:returnToMenuBar()
+  menu:setTitle(({ idle = "🎙️", recording = "🔴", working = "⏳" })[s] or "🎙️")
+end
+if menu then
+  menu:setMenu(function()
+    return {
+      { title = "Scribe Dictation", disabled = true },
+      { title = "-" },
+      { title = "Pacing timer (practice)", checked = M.timer,
+        fn = function() M.timer = not M.timer; saveSettings() end },
+      { title = "Timer interval", menu = {
+        { title = "1 minute",  checked = M.timerIntervalSecs == 60,
+          fn = function() M.timerIntervalSecs = 60;  saveSettings() end },
+        { title = "2 minutes", checked = M.timerIntervalSecs == 120,
+          fn = function() M.timerIntervalSecs = 120; saveSettings() end },
+        { title = "5 minutes", checked = M.timerIntervalSecs == 300,
+          fn = function() M.timerIntervalSecs = 300; saveSettings() end },
+      }},
+      { title = "-" },
+      { title = "Show credit balloon", checked = M.showCredits,
+        fn = function() M.showCredits = not M.showCredits; saveSettings() end },
+      { title = "-" },
+      { title = "Reload config", fn = function() hs.reload() end },
+    }
+  end)
 end
 setState("idle")
 
@@ -254,7 +291,7 @@ local function rtStop()
   end
   rtStartTime = 0
   rtBuf = ""
-  if menu then menu:removeFromMenuBar() end
+  setState("idle")
 end
 
 -- Restart the inactivity clock; fires rtStop + a note if no new text arrives.
@@ -294,7 +331,7 @@ local function rtStart()
     function()  -- on exit: clean up (idle timer too, in case it died on its own)
       rtTask = nil; rtBuf = ""
       if rtIdleTimer then rtIdleTimer:stop(); rtIdleTimer = nil end
-      if menu then menu:removeFromMenuBar() end
+      setState("idle")
     end,
     function(_, stdout, stderr)       -- stream stdout: paste each complete line
       if stderr and stderr ~= "" then

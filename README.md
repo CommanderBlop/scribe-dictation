@@ -343,12 +343,15 @@ All settings live at the top of `init.lua`:
 Leave `M.languageCode = nil` to get the mixed-language auto-detection that makes
 Scribe worth using.
 
-> **Practice mode (pacing timer).** For interview / public-speaking practice, set
-> `M.timer = true` to drop a marker into the transcript every `M.timerIntervalSecs`
-> so you can see your words-per-minute. It's placed at the exact word where the
-> minute ticks (via the API's word timestamps), so per-minute counts are accurate;
-> it appears when that segment commits (on your next pause), not exactly on the
-> second. Off by default since it writes markers into your text.
+> **Practice mode (pacing timer).** For interview / public-speaking practice, turn
+> on **🎙️ menu-bar → Pacing timer** (and pick an interval) to drop a marker into the
+> transcript every minute so you can see your words-per-minute. The menu-bar dropdown
+> is a small settings panel — its toggles persist via `hs.settings` (no file editing,
+> and a `git pull` won't reset them); `M.timer` / `M.timerIntervalSecs` are just the
+> first-run defaults. The marker is placed at the exact word where the minute ticks
+> (via the API's word timestamps), so per-minute counts are accurate; it appears when
+> that segment commits (on your next pause), not exactly on the second. Off by default
+> since it writes markers into your text.
 
 ---
 

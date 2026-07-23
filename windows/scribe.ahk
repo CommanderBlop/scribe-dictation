@@ -53,6 +53,7 @@ streamF := A_Temp "\scribe_stream.txt"
 rtErrF  := A_Temp "\scribe_stream_err.txt"  ; engine stderr, so failures surface
 batOutF := A_Temp "\scribe_batch_out.txt"
 credF   := A_Temp "\scribe_credits.txt"
+cfgFile := EnvGet("LOCALAPPDATA") "\ScribeDictation\config.ini"  ; persisted toggles
 
 state  := "idle"    ; idle | rt | batch
 rtPid  := 0
@@ -60,11 +61,28 @@ recPid := 0
 lastLen := 0
 rtStopping := false ; guards the "engine died" check during a deliberate stop
 
+LoadConfig()   ; override the CONFIG defaults above with any saved menu choices
+
 try TraySetIcon(iconIdle)
 A_IconTip := "Scribe — idle  (Ctrl+Shift+Space realtime · Ctrl+Shift+B paragraph)"
+
+; Right-click tray menu = a small settings panel; toggles persist to config.ini
+; (in %LOCALAPPDATA%), so they survive restarts and `git pull` never clobbers them.
+intervalMenu := Menu()
+intervalMenu.Add("1 minute", (*) => SetInterval(60))
+intervalMenu.Add("2 minutes", (*) => SetInterval(120))
+intervalMenu.Add("5 minutes", (*) => SetInterval(300))
+
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Scribe Dictation", (*) => "")
+A_TrayMenu.Disable("Scribe Dictation")
+A_TrayMenu.Add()
+A_TrayMenu.Add("Pacing timer (practice)", (*) => ToggleTimer())
+A_TrayMenu.Add("Timer interval", intervalMenu)
+A_TrayMenu.Add("Show credits", (*) => ToggleCredits())
+A_TrayMenu.Add()
 A_TrayMenu.Add("Quit", (*) => ExitApp())
+RefreshTrayChecks()
 
 Hotkey(RT_KEY, (*) => ToggleRealtime())
 Hotkey(BATCH_KEY, (*) => ToggleBatch())
@@ -246,4 +264,63 @@ PasteText(txt) {
     Send("^v")
     Sleep(120)
     A_Clipboard := prev
+}
+
+; ---------------- settings (tray menu + config.ini) ----------------
+LoadConfig() {
+    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS
+    if !FileExist(cfgFile)
+        return
+    TIMER := IniRead(cfgFile, "scribe", "timer", TIMER ? "1" : "0") = "1"
+    SHOW_CREDITS := IniRead(cfgFile, "scribe", "show_credits", SHOW_CREDITS ? "1" : "0") = "1"
+    v := IniRead(cfgFile, "scribe", "timer_interval", TIMER_INTERVAL)
+    if IsInteger(v) && Integer(v) > 0
+        TIMER_INTERVAL := Integer(v)
+}
+
+SaveConfig() {
+    global cfgFile, TIMER, TIMER_INTERVAL, SHOW_CREDITS
+    try DirCreate(RegExReplace(cfgFile, "\\[^\\]+$"))   ; ensure the parent folder
+    IniWrite(TIMER ? "1" : "0", cfgFile, "scribe", "timer")
+    IniWrite(SHOW_CREDITS ? "1" : "0", cfgFile, "scribe", "show_credits")
+    IniWrite(TIMER_INTERVAL, cfgFile, "scribe", "timer_interval")
+}
+
+RefreshTrayChecks() {
+    global TIMER, SHOW_CREDITS, TIMER_INTERVAL, intervalMenu
+    if TIMER
+        A_TrayMenu.Check("Pacing timer (practice)")
+    else
+        A_TrayMenu.Uncheck("Pacing timer (practice)")
+    if SHOW_CREDITS
+        A_TrayMenu.Check("Show credits")
+    else
+        A_TrayMenu.Uncheck("Show credits")
+    for label, secs in Map("1 minute", 60, "2 minutes", 120, "5 minutes", 300) {
+        if TIMER_INTERVAL = secs
+            intervalMenu.Check(label)
+        else
+            intervalMenu.Uncheck(label)
+    }
+}
+
+ToggleTimer() {
+    global TIMER
+    TIMER := !TIMER
+    SaveConfig()
+    RefreshTrayChecks()
+}
+
+ToggleCredits() {
+    global SHOW_CREDITS
+    SHOW_CREDITS := !SHOW_CREDITS
+    SaveConfig()
+    RefreshTrayChecks()
+}
+
+SetInterval(secs) {
+    global TIMER_INTERVAL
+    TIMER_INTERVAL := secs
+    SaveConfig()
+    RefreshTrayChecks()
 }

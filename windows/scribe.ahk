@@ -3,14 +3,14 @@
 ; ============================================================
 ;  Scribe Dictation — Windows glue
 ;  Ctrl+Shift+Space : realtime — stream & paste each segment as you speak
-;  Ctrl+Shift+B     : paragraph (fallback) — record, then transcribe the whole clip
-;  Tray dot: gray = idle, green = realtime, red = paragraph. Credit balloon after each use.
+;  Ctrl+Shift+B     : recording (fallback) — record, then transcribe the whole clip
+;  Tray dot: gray = idle, green = realtime, red = recording. Credit balloon after each use.
 ;  Transcription is done by the Python side (realtime engine / scribe_batch.py).
 ; ============================================================
 
 ; ---------------- CONFIG ----------------
 RT_KEY    := "^+Space"       ; realtime (primary)
-BATCH_KEY := "^+b"          ; paragraph mode (fallback)
+BATCH_KEY := "^+b"          ; recording mode (fallback)
 MIC       := "-t waveaudio default"  ; full sox input spec (bare -d fails on Windows).
                                      ; e.g. "-t waveaudio 0" or "-t waveaudio ""Mic Name""".
 SILENCE   := "0.6"          ; realtime: pause (s) that finalizes a segment
@@ -46,7 +46,7 @@ if FileExist(bin "\scribe_stream.exe") {
 
 iconIdle := A_ScriptDir "\icon-idle.ico"   ; gray = idle
 iconLive := A_ScriptDir "\icon-live.ico"   ; green = realtime
-iconRec  := A_ScriptDir "\icon-rec.ico"    ; red = paragraph recording
+iconRec  := A_ScriptDir "\icon-rec.ico"    ; red = recording
 rawF    := A_Temp "\scribe_rec.raw"
 wavF    := A_Temp "\scribe_rec.wav"
 streamF := A_Temp "\scribe_stream.txt"
@@ -64,7 +64,7 @@ rtStopping := false ; guards the "engine died" check during a deliberate stop
 LoadConfig()   ; override the CONFIG defaults above with any saved menu choices
 
 try TraySetIcon(iconIdle)
-A_IconTip := "Scribe — idle  (Ctrl+Shift+Space realtime · Ctrl+Shift+B paragraph)"
+A_IconTip := "Scribe — idle  (" KeyLabel(RT_KEY) " realtime · " KeyLabel(BATCH_KEY) " recording)"
 
 ; Hotkey presets, chosen from the tray menu (label, AHK key string). Persisted
 ; like the toggles. AHK notation: ^=Ctrl +=Shift !=Alt #=Win.
@@ -102,7 +102,7 @@ A_TrayMenu.Add("Pacing timer (practice)", (*) => ToggleTimer())
 A_TrayMenu.Add("Timer interval", intervalMenu)
 A_TrayMenu.Add()
 A_TrayMenu.Add("Realtime hotkey", rtKeyMenu)
-A_TrayMenu.Add("Paragraph hotkey", batchKeyMenu)
+A_TrayMenu.Add("Recording hotkey", batchKeyMenu)
 A_TrayMenu.Add()
 A_TrayMenu.Add("Show credits", (*) => ToggleCredits())
 A_TrayMenu.Add()
@@ -114,10 +114,10 @@ Hotkey(RT_KEY, HotkeyRealtime)
 Hotkey(BATCH_KEY, HotkeyBatch)
 
 Idle() {
-    global state, iconIdle
+    global state, iconIdle, RT_KEY, BATCH_KEY
     state := "idle"
     try TraySetIcon(iconIdle)
-    A_IconTip := "Scribe — idle"
+    A_IconTip := "Scribe — idle  (" KeyLabel(RT_KEY) " realtime · " KeyLabel(BATCH_KEY) " recording)"
 }
 Active(tip, icon) {
     try TraySetIcon(icon)
@@ -209,7 +209,7 @@ RtAutoStop() {
         StopRealtime()
 }
 
-; ---------------- paragraph / batch ----------------
+; ---------------- recording / batch ----------------
 ToggleBatch() {
     global state
     if state = "batch"
@@ -228,7 +228,7 @@ StartBatch() {
         return
     }
     state := "batch"
-    Active("recording (paragraph)", iconRec)
+    Active("recording", iconRec)
     SetTimer(BatchAutoStop, -MAX_SECS * 1000)
 }
 
@@ -394,7 +394,7 @@ HotkeyBatch(*)    => ToggleBatch()
 SetRtKey(newKey, *) {
     global RT_KEY, BATCH_KEY
     if newKey = BATCH_KEY {
-        TrayTip("That's already the paragraph hotkey — pick another.", "Scribe", 3)
+        TrayTip("That's already the recording hotkey — pick another.", "Scribe", 3)
         return
     }
     try Hotkey(RT_KEY, HotkeyRealtime, "Off")   ; unbind the old
@@ -419,7 +419,7 @@ SetBatchKey(newKey, *) {
 
 ; "Custom…" — a tiny window with AHK's native Hotkey control: press a combo, Save.
 CaptureHotkey(kind) {
-    title := "Scribe — set " (kind = "rt" ? "realtime" : "paragraph") " hotkey"
+    title := "Scribe — set " (kind = "rt" ? "realtime" : "recording") " hotkey"
     g := Gui("+AlwaysOnTop -MinimizeBox", title)
     g.SetFont("s10")
     g.Add("Text", , "Press the shortcut you want, then click Save.`nInclude Ctrl / Alt / Shift / Win (or use an F-key).")

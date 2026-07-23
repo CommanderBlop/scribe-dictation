@@ -31,11 +31,11 @@ for recording. Two modes:
 
 - **Fn+F5 — realtime mode** (default): stream the mic to Scribe v2 Realtime over a
   WebSocket and paste each segment as you pause.
-- **Fn+F4 — paragraph mode** (fallback): record, then transcribe the whole
+- **Fn+F4 — recording mode** (fallback): record, then transcribe the whole
   utterance at once. Simple and reliable; text appears a moment after you stop.
 
 > **On Windows?** An experimental port (AutoHotkey + Python) is in
-> [`windows/`](windows/README.md) — paragraph mode works via `Ctrl+Shift+Space`.
+> [`windows/`](windows/README.md) — recording mode works via `Ctrl+Shift+Space`.
 > It's early and untested; feedback welcome.
 
 ---
@@ -48,7 +48,7 @@ Fn+F4: hotkey ─► record mic (sox) ─► Scribe v2 (REST) ──────
 ```
 
 1. Hotkey → `sox` captures your mic.
-2. Paragraph mode POSTs the WAV to the REST endpoint; realtime streams PCM chunks
+2. Recording mode POSTs the WAV to the REST endpoint; realtime streams PCM chunks
    over the WebSocket.
 3. Returned text is placed on the clipboard and pasted with ⌘V at the cursor.
 
@@ -129,7 +129,7 @@ finalized segment lands at the cursor as you pause; press **Fn+F5** again to sto
 
 Prefer to see every step (or the one-liner failed)? Same result, by hand. Steps 1–2
 are copy-paste; 3–4 need a few clicks. Realtime mode (Fn+F5) needs the small Python
-setup in step 6; paragraph mode (Fn+F4) works with only Hammerspoon and sox.
+setup in step 6; recording mode (Fn+F4) works with only Hammerspoon and sox.
 
 > **Open Terminal:** press `⌘ Space`, type "Terminal", hit Return.
 
@@ -202,7 +202,7 @@ Click the Hammerspoon **🔨** in the menu bar → **Reload Config**. You'll see
 press **Fn+F4**, speak a sentence, and press **Fn+F4** again — the text is pasted at
 the cursor.
 
-> 🔴 = recording, ⏳ = transcribing, nothing = idle. This is the paragraph fallback;
+> 🔴 = recording, ⏳ = transcribing, nothing = idle. This is the recording fallback;
 > realtime uses Fn+F5 and shows 🟢 while it is streaming.
 
 #### 6. Enable realtime mode
@@ -294,11 +294,11 @@ at launch). Shell side: `export ELEVENLABS_API_KEY="$(launchctl getenv ELEVENLAB
 | Action                          | Default  | Config field    |
 |---------------------------------|----------|-----------------|
 | Realtime mode (stream → paste)  | `Fn+F5`  | `M.realtimeKey` |
-| Paragraph mode (record → paste) | `Fn+F4`  | `M.toggleKey`   |
+| Recording mode (record → paste) | `Fn+F4`  | `M.toggleKey`   |
 
 Press once to start, press again to stop. The two modes are mutually exclusive —
 while one is active, the other key is ignored. 🔴/⏳ shows in the menu bar for
-paragraph mode, 🟢 for realtime.
+recording mode, 🟢 for realtime.
 
 ### About the Fn+F5 key
 
@@ -326,10 +326,10 @@ All settings live at the top of `init.lua`:
 | `M.modelId`      | `"scribe_v2"`          | `scribe_v1` also available |
 | `M.sox`          | `/opt/homebrew/bin/sox`| Path to the `sox` binary |
 | `M.maxSecs`         | `120`               | Auto-stop after N seconds |
-| `M.toggleKey`       | `Fn+F4`             | Paragraph mode; press to start / press again to stop |
+| `M.toggleKey`       | `Fn+F4`             | Recording mode; press to start / press again to stop |
 | `M.languageCode`    | `nil`               | `nil` = auto-detect; or force `"zh"`, `"en"`, … |
 | `M.showCredits`     | `true`              | Show a credit toast after each transcription |
-| `M.creditsPerMinute`| `18.7`              | Credits/min for paragraph mode estimate (plan-dependent) |
+| `M.creditsPerMinute`| `18.7`              | Credits/min for recording mode estimate (plan-dependent) |
 | `M.creditsPerMinuteRealtime`| `33.2`      | Credits/min for realtime estimate (realtime is ~1.77× pricier) |
 | `M.proxy`           | `"auto"`            | `"auto"` follows the macOS system proxy; or an explicit `"http://127.0.0.1:7890"`; or `nil` for direct. Used only when the proxy is actually listening, else direct |
 | `M.realtimeKey`     | `Fn+F5`             | Realtime streaming toggle (`nil` to disable) |
@@ -354,13 +354,13 @@ Scribe worth using.
 > since it writes markers into your text.
 
 > **Menu-bar panel & reopening.** The menu-bar dot (⚪ idle · 🟢 realtime · 🔴
-> paragraph) is a small settings panel — the toggles above plus **Set / update API
+> recording) is a small settings panel — the toggles above plus **Set / update API
 > key…** (a masked prompt that writes to your Keychain, picked up on the next
 > dictation). If you ever quit Hammerspoon, reopen **Hammerspoon** (Spotlight →
 > "Hammerspoon") — it reloads this config on launch. Tick Hammerspoon → Preferences →
 > *Launch Hammerspoon at login* so the ⚪ is always there.
 >
-> The menu also has **Realtime hotkey** / **Paragraph hotkey** submenus — pick a
+> The menu also has **Realtime hotkey** / **Recording hotkey** submenus — pick a
 > preset (F5, ⌃⇧Space, …), or **Custom…** to capture your own (it listens for the
 > next combo you press; Esc cancels). It rebinds immediately and persists.
 
@@ -368,7 +368,7 @@ Scribe worth using.
 
 ## Realtime mode (Fn+F5)
 
-Paragraph mode (Fn+F4) works with nothing but Hammerspoon + sox. Realtime mode adds
+Recording mode (Fn+F4) works with nothing but Hammerspoon + sox. Realtime mode adds
 live, segment-by-segment dictation by streaming to **Scribe v2 Realtime** over a
 WebSocket. It uses a small Python engine, so it needs a one-time venv:
 
@@ -382,7 +382,7 @@ Point `M.pyProject` at that folder. Then press **Fn+F5** to start streaming (�
 speak, and each finalized segment is pasted as you pause; press Fn+F5 again to stop.
 Details and troubleshooting: [realtime/README.md](realtime/README.md).
 
-> Realtime is billed at **$0.39/audio-hour** (≈1.77× paragraph mode). The credit
+> Realtime is billed at **$0.39/audio-hour** (≈1.77× recording mode). The credit
 > toast uses `M.creditsPerMinuteRealtime` for its estimate.
 
 ---
@@ -434,7 +434,7 @@ Open the Hammerspoon **Console** (menu-bar hammer → Console) to see logs.
 | `Scribe API: ...` alert | Bad/expired API key, or out of credits |
 | "empty/unexpected response" | Check Console for the raw response printed below it |
 | `curl failed (28)` timeout | Network needs a proxy — Hammerspoon (GUI) doesn't see your shell's proxy vars. Set `M.proxy` |
-| **Realtime (Fn+F5) won't connect, but paragraph (Fn+F4) works** | Common behind a proxy / in a restricted region (e.g. mainland China): realtime uses a WebSocket that a direct connection may block, while batch REST still gets through. `M.proxy = "auto"` (the default) follows your macOS **system proxy** automatically. If your proxy runs in TUN/transparent mode (no system proxy set — e.g. some Clash setups), scutil can't see it: set an explicit `M.proxy = "http://127.0.0.1:7890"`. Fn+F4 is the reliable fallback. |
+| **Realtime (Fn+F5) won't connect, but recording (Fn+F4) works** | Common behind a proxy / in a restricted region (e.g. mainland China): realtime uses a WebSocket that a direct connection may block, while batch REST still gets through. `M.proxy = "auto"` (the default) follows your macOS **system proxy** automatically. If your proxy runs in TUN/transparent mode (no system proxy set — e.g. some Clash setups), scutil can't see it: set an explicit `M.proxy = "http://127.0.0.1:7890"`. Fn+F4 is the reliable fallback. |
 | Fn+F5 does nothing at all | Confirm the realtime venv exists (`~/projects/scribe-dictation/.venv`); on a media-key keyboard use **Fn**+F5, or remap `M.realtimeKey` |
 
 ---

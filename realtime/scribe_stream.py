@@ -305,7 +305,7 @@ async def main():
         die(f"server rejected the connection (HTTP {code or '?'}).")
     except (TimeoutError, OSError) as e:
         die(f"can't reach the realtime server ({e.__class__.__name__}). Behind a proxy or in a "
-            "restricted region? Set M.proxy in init.lua. Fn+F4 paragraph mode still works.")
+            "restricted region? Set M.proxy in init.lua. Fn+F4 recording mode still works.")
     except websockets.WebSocketException as e:
         die(f"WebSocket failed ({e.__class__.__name__}).")
     except Exception as e:  # never surface a raw multi-line traceback

@@ -16,9 +16,9 @@ Example output:
 
 ```
 So the main challenge I faced was scaling the ingestion pipeline …
-⏱ 1:00 · 132 words
+[1:00 · 132 words]
 … we ended up sharding by tenant, which cut p99 latency in half …
-⏱ 2:00 · 118 words
+[2:00 · 118 words]
 ```
 
 Opt-in only (normal dictation shouldn't get timers in the text).
@@ -45,7 +45,7 @@ segment "we ended up sharding by tenant which cut latency"
 words:    …  by[58.9s]  tenant[59.4s] | which[60.2s]  cut[60.6s] …
                                     ^ 60s boundary
 => emit "we ended up sharding by tenant"
-   emit "⏱ 1:00 · 132 words"
+   emit "[1:00 · 132 words]"
    emit "which cut latency"
 ```
 
@@ -57,7 +57,7 @@ started, *including your pauses* — which is exactly the denominator you want f
 
 A segment only commits **after** you pause. So at real-time 1:00, while you're
 mid-sentence, nothing appears on screen yet; when you pause at ~1:08 the whole
-segment commits and we *retroactively* insert `⏱ 1:00` at the correct word inside it.
+segment commits and we *retroactively* insert `[1:00 …]` at the correct word inside it.
 
 - **Position in the text is exact** (correct word boundary, correct per-minute word
   counts) — this is what matters for reviewing pacing afterward.
@@ -86,7 +86,7 @@ paste it like any other segment.
 
 ## Marker format
 
-One distinct, easy-to-strip line: `⏱ M:SS · <n> words` where `<n>` is words *in the
+One distinct, easy-to-strip line: `[M:SS · <n> words]` where `<n>` is words *in the
 minute just ended*. (Could also show cumulative / running avg — keep to one line.)
 
 ## Word counting (bilingual!)
@@ -114,7 +114,7 @@ on each committed_transcript_with_timestamps with words[]:
             before = words with start <  next_mark
             after  = words with start >= next_mark
             emit(text(before)); words_since_mark += count_words(text(before))
-            emit(f"⏱ {mmss(next_mark)} · {words_since_mark} words")
+            emit(f"[{mmss(next_mark)} · {words_since_mark} words]")
             words_since_mark = 0
             next_mark += interval
             seg_words = after

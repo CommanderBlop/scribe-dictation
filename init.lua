@@ -51,7 +51,7 @@ M.realtimeVadThreshold = 0.4
 -- Auto-close realtime after this many seconds with no new text (you probably
 -- forgot to stop it). Press Fn+F5 to resume. Set to 0 to disable.
 M.realtimeIdleSecs = 30
--- Practice mode: insert a pacing marker (⏱ M:SS · N words) into the transcript
+-- Practice mode: insert a pacing marker ([M:SS · N words]) into the transcript
 -- every M.timerIntervalSecs of speaking, so you can see your words-per-minute.
 -- Off by default — it writes markers into your text. Set to 300 for 5-min marks.
 M.timer = false
@@ -184,7 +184,7 @@ local function setState(s)
   state = s
   if not menu then return end
   menu:returnToMenuBar()
-  menu:setTitle(({ idle = "⚪", recording = "🔴", working = "⏳" })[s] or "⚪")
+  menu:setTitle(({ idle = "⚪", recording = "🔴", working = "🟡" })[s] or "⚪")
 end
 
 -- Prompt for a new API key (masked) and store it in the Keychain — same entry
@@ -202,7 +202,7 @@ local function setApiKey()
   local user = os.getenv("USER") or ""
   local _, wrote = hs.execute("/usr/bin/security add-generic-password -a '" .. user ..
     "' -s '" .. M.keychainService .. "' -T /usr/bin/security -w '" .. key .. "' -U 2>/dev/null")
-  if wrote then M.apiKey = key; hs.alert.show("✅ API key saved.")
+  if wrote then M.apiKey = key; hs.alert.show("API key saved.")
   else hs.alert.show("Couldn't write to the Keychain.") end
 end
 
@@ -239,7 +239,7 @@ local function paste(text)
   text = text:gsub("[\1-\8\11-\31\127]", "")   -- strip control chars (keep tab/newline)
   hs.pasteboard.setContents(text)
   if not hs.accessibilityState() then
-    hs.alert.show("⚠️ Grant Accessibility to Hammerspoon to auto-paste.\nText is on the clipboard — press ⌘V.", 5)
+    hs.alert.show("Grant Accessibility to Hammerspoon to auto-paste.\nText is on the clipboard — press ⌘V.", 5)
     return
   end
   -- small delay so the focused app sees the new clipboard before ⌘V
@@ -264,7 +264,7 @@ end
 local function updateUsage(durSecs, ratePerMin)
   if not M.showCredits then return end
   local est = math.floor((durSecs or 0) * (ratePerMin or M.creditsPerMinute) / 60 + 0.5)
-  local base = string.format("💳 ~%s credits (%.1fs)", commafy(est), durSecs or 0)
+  local base = string.format("~%s credits (%.1fs)", commafy(est), durSecs or 0)
   local uargs = {"-sS", "--max-time", "10",
                  "https://api.elevenlabs.io/v1/user/subscription",
                  "-H", "xi-api-key: " .. M.apiKey}
@@ -471,6 +471,6 @@ hs.timer.doAfter(0.6, function()
     todo[#todo + 1] = "Realtime not installed — rerun install.sh"
   end
   if #todo > 0 then
-    hs.alert.show("⚠️ Scribe needs setup:\n• " .. table.concat(todo, "\n• "), 8)
+    hs.alert.show("Scribe needs setup:\n• " .. table.concat(todo, "\n• "), 8)
   end
 end)

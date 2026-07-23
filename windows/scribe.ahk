@@ -74,8 +74,9 @@ BATCH_PRESETS := [["Ctrl+Shift+B", "^+b"], ["Ctrl+Alt+B", "^!b"], ["Ctrl+Shift+G
 ; Right-click tray menu = a small settings panel; toggles persist to config.ini
 ; (in %LOCALAPPDATA%), so they survive restarts and `git pull` never clobbers them.
 intervalMenu := Menu()
+intervalMenu.Add("10 seconds", (*) => SetInterval(10))
+intervalMenu.Add("30 seconds", (*) => SetInterval(30))
 intervalMenu.Add("1 minute", (*) => SetInterval(60))
-intervalMenu.Add("2 minutes", (*) => SetInterval(120))
 intervalMenu.Add("5 minutes", (*) => SetInterval(300))
 
 rtKeyMenu := Menu()
@@ -356,7 +357,7 @@ RefreshTrayChecks() {
         A_TrayMenu.Check("Show credits")
     else
         A_TrayMenu.Uncheck("Show credits")
-    for label, secs in Map("1 minute", 60, "2 minutes", 120, "5 minutes", 300) {
+    for label, secs in Map("10 seconds", 10, "30 seconds", 30, "1 minute", 60, "5 minutes", 300) {
         if TIMER_INTERVAL = secs
             intervalMenu.Check(label)
         else

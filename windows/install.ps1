@@ -5,6 +5,20 @@
 $ErrorActionPreference = "Stop"
 function Say($m){ Write-Host "==> $m" -ForegroundColor Cyan }
 
+# Inline (not a separate .ps1 file) so it runs under the same policy-free context
+# as this iex'd script — loading a .ps1 from disk is blocked by the default
+# "Restricted" execution policy.
+function Set-ScribeKey($PyExe) {
+    Write-Host "Get a key at  https://elevenlabs.io/app/api  (Developers -> API Keys, 'Speech to Text')."
+    $key = Read-Host "Paste your ElevenLabs API key"
+    if ($key -notmatch '^sk_[A-Za-z0-9]+$') {
+        Write-Host "That doesn't look like an ElevenLabs key (sk_...). Skipped." -ForegroundColor Yellow
+        return
+    }
+    $key | & $PyExe -c "import keyring,sys; keyring.set_password('scribe-dictation','api', sys.stdin.read().strip())"
+    Say "API key saved to Windows Credential Manager."
+}
+
 Say "Installing AutoHotkey, Python, git, sox via winget (approve any prompts)…"
 winget install -e --id AutoHotkey.AutoHotkey --silent --accept-source-agreements --accept-package-agreements
 winget install -e --id Python.Python.3.12    --silent --accept-source-agreements --accept-package-agreements
@@ -28,7 +42,7 @@ if (-not (Get-Command sox -ErrorAction SilentlyContinue)) {
     Write-Host "WARNING: 'sox' isn't on PATH. Install it (e.g. 'scoop install sox', or from sox.sourceforge.net) and reopen the terminal — recording needs it." -ForegroundColor Yellow
 }
 
-& "$repo\windows\set-key.ps1"
+Set-ScribeKey "$repo\.venv\Scripts\python.exe"
 
 Say "Adding a startup shortcut…"
 $startup = [Environment]::GetFolderPath('Startup')

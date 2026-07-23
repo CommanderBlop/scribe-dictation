@@ -22,7 +22,14 @@ asks for your **ElevenLabs API key** (stored in the Windows Credential Manager),
 adds a startup shortcut, and launches the tool.
 
 Get a key at **elevenlabs.io/app/api** (Developers → API Keys, *Speech to Text*
-permission). Rotate it any time with `windows\set-key.ps1`.
+permission). Rotate it any time with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$HOME\projects\scribe-dictation\windows\set-key.ps1"
+```
+
+(The `-ExecutionPolicy Bypass` is needed because Windows blocks running `.ps1`
+files by default — the one-line installer sidesteps this by inlining the step.)
 
 ## Use
 

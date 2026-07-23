@@ -245,11 +245,11 @@ local function dotIcon(r, g, b, a)
   img:template(false)   -- keep the color; a template image renders monochrome (all gray)
   return img
 end
-local DOTS = {   -- same low-saturation colors as windows/icon-*.ico
+local DOTS = {   -- same colors as windows/icon-*.ico (soft, but a touch more vivid)
   idle      = dotIcon(150 / 255, 152 / 255, 158 / 255, 0.45),  -- dim gray = off
-  realtime  = dotIcon(104 / 255, 164 / 255, 120 / 255, 0.92),  -- muted green
-  recording = dotIcon(198 / 255, 110 / 255, 110 / 255, 0.92),  -- muted red
-  working   = dotIcon(198 / 255, 168 / 255, 104 / 255, 0.92),  -- muted amber
+  realtime  = dotIcon(76 / 255, 182 / 255, 109 / 255, 0.95),   -- green
+  recording = dotIcon(223 / 255, 94 / 255, 94 / 255, 0.95),    -- red
+  working   = dotIcon(228 / 255, 176 / 255, 72 / 255, 0.95),   -- amber
 }
 local menu = hs.menubar.new(true)
 local function setState(s)

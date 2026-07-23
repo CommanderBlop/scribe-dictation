@@ -283,13 +283,15 @@ ShowCredits() {
     }
 }
 
+; No clipboard save/restore: putting the old contents back ~120ms after ^v races
+; apps that process the paste slowly — they'd read the restored (stale) clipboard
+; instead of the segment. Same bug class as the mac glue's serialized-paste fix;
+; the mac side never restores either, so both platforms now behave the same.
 PasteText(txt) {
-    prev := ClipboardAll()
     A_Clipboard := txt
     ClipWait(1)
     Send("^v")
     Sleep(120)
-    A_Clipboard := prev
 }
 
 ; ---------------- settings (tray menu + config.ini) ----------------
@@ -366,14 +368,16 @@ RefreshTrayChecks() {
     rtCustom := true
     for i, p in RT_PRESETS {
         if RT_KEY = p[2] {
-            rtKeyMenu.Check(p[1]); rtCustom := false
+            rtKeyMenu.Check(p[1])
+            rtCustom := false
         } else
             rtKeyMenu.Uncheck(p[1])
     }
     batchCustom := true
     for i, p in BATCH_PRESETS {
         if BATCH_KEY = p[2] {
-            batchKeyMenu.Check(p[1]); batchCustom := false
+            batchKeyMenu.Check(p[1])
+            batchCustom := false
         } else
             batchKeyMenu.Uncheck(p[1])
     }

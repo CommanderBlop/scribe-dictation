@@ -17,6 +17,8 @@ SILENCE   := "0.6"          ; realtime: pause (s) that finalizes a segment
 VAD       := "0.4"          ; realtime: speech-vs-silence sensitivity 0-1
 MAX_SECS  := 180            ; safety auto-stop
 SHOW_CREDITS := true        ; tray balloon with credits left after each use
+TIMER     := false          ; practice mode: insert "⏱ M:SS · N words" markers into the text
+TIMER_INTERVAL := 60        ; seconds between pacing markers (e.g. 300 for 5-min marks)
 ; ----------------------------------------
 
 repo    := A_ScriptDir "\.."
@@ -88,15 +90,16 @@ ToggleRealtime() {
 }
 
 StartRealtime() {
-    global state, rtPid, streamF, rtErrF, lastLen, rtStopping, engineCmd, MIC, SILENCE, VAD, MAX_SECS, iconLive
+    global state, rtPid, streamF, rtErrF, lastLen, rtStopping, engineCmd, MIC, SILENCE, VAD, MAX_SECS, iconLive, TIMER, TIMER_INTERVAL
     try FileDelete(streamF)
     try FileDelete(rtErrF)
     lastLen := 0
     rtStopping := false
     EnvSet("SCRIBE_SOX_INPUT", MIC)   ; tell the engine how to open the mic on Windows
+    timerArg := TIMER ? " --timer --timer-interval " TIMER_INTERVAL : ""
     ; Route the engine's stderr to a file (via cmd /c) so failures — no key, sox
     ; can't open the mic, 401, network — can be shown instead of vanishing.
-    Run(A_ComSpec ' /c "' engineCmd ' --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD ' 2> "' rtErrF '""', , "Hide", &rtPid)
+    Run(A_ComSpec ' /c "' engineCmd ' --emit --out-file "' streamF '" --silence ' SILENCE ' --vad-threshold ' VAD timerArg ' 2> "' rtErrF '""', , "Hide", &rtPid)
     state := "rt"
     Active("listening (realtime)", iconLive)
     SetTimer(PollStream, 150)

@@ -51,6 +51,11 @@ M.realtimeVadThreshold = 0.4
 -- Auto-close realtime after this many seconds with no new text (you probably
 -- forgot to stop it). Press Fn+F5 to resume. Set to 0 to disable.
 M.realtimeIdleSecs = 30
+-- Practice mode: insert a pacing marker (⏱ M:SS · N words) into the transcript
+-- every M.timerIntervalSecs of speaking, so you can see your words-per-minute.
+-- Off by default — it writes markers into your text. Set to 300 for 5-min marks.
+M.timer = false
+M.timerIntervalSecs = 60
 -- ----------------------------
 
 -- If no env var and no hardcoded key, fall back to the macOS Keychain.
@@ -277,6 +282,14 @@ local function rtStart()
   end
   rtBuf = ""
   if menu then menu:returnToMenuBar(); menu:setTitle("🟢") end
+  local rtArgs = {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
+    "--silence", tostring(M.realtimeSilenceSecs),
+    "--vad-threshold", tostring(M.realtimeVadThreshold)}
+  if M.timer then
+    rtArgs[#rtArgs + 1] = "--timer"
+    rtArgs[#rtArgs + 1] = "--timer-interval"
+    rtArgs[#rtArgs + 1] = tostring(M.timerIntervalSecs)
+  end
   rtTask = hs.task.new(M.pyProject .. "/.venv/bin/python",
     function()  -- on exit: clean up (idle timer too, in case it died on its own)
       rtTask = nil; rtBuf = ""
@@ -302,9 +315,7 @@ local function rtStart()
       if pasted then rtResetIdle() end   -- new text → restart the idle clock
       return true
     end,
-    {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
-     "--silence", tostring(M.realtimeSilenceSecs),
-     "--vad-threshold", tostring(M.realtimeVadThreshold)})
+    rtArgs)
   local env = {
     ELEVENLABS_API_KEY = M.apiKey,
     SCRIBE_SOX_PATH = M.sox,

@@ -25,6 +25,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import shutil
 import sys
 import time
@@ -52,13 +53,34 @@ def die(msg: str) -> None:
     sys.exit(1)
 
 
-def build_url(commit_strategy: str, silence_secs: float, vad_threshold: float) -> str:
+# --- pacing timer (practice mode) helpers ---
+# Bilingual word count: each CJK codepoint is one "word" (Chinese has no spaces),
+# plus each Latin/number run counts as one.
+_CJK = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
+_LATIN = re.compile(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*")
+
+
+def count_words(s: str) -> int:
+    return len(_CJK.findall(s)) + len(_LATIN.findall(s))
+
+
+def mmss(secs: float) -> str:
+    s = int(round(secs))
+    return f"{s // 60}:{s % 60:02d}"
+
+
+def build_url(commit_strategy: str, silence_secs: float, vad_threshold: float,
+              include_timestamps: bool = False) -> str:
     params = {
         "model_id": "scribe_v2_realtime",
         "audio_format": f"pcm_{SAMPLE_RATE}",
         "commit_strategy": commit_strategy,  # "vad" or "manual"
         "include_language_detection": "true",
     }
+    # Word-level timestamps power the pacing timer: they let us place a minute
+    # marker at the exact word instead of guessing between segments.
+    if include_timestamps:
+        params["include_timestamps"] = "true"
     # vad_silence_threshold_secs: lower -> commits after a shorter pause -> text
     #   appears sooner (API default 1.5s). Committed text is final; pasting is safe.
     # vad_threshold: speech-vs-silence sensitivity (API default 0.4). Higher ->
@@ -85,10 +107,28 @@ async def pump_audio(ws, proc):
         pass
 
 
-async def receive(ws, emit, outfh=None):
-    """Surface transcripts. `emit` -> plain finalized lines for piping/out-file."""
+async def receive(ws, emit, outfh=None, interval=None):
+    """Surface transcripts. `emit` -> plain finalized lines for piping/out-file.
+
+    If `interval` (seconds) is set, insert a pacing marker every `interval` of
+    audio time, split at the exact word using the committed word timestamps.
+    """
     last = None
     last_beat = 0.0
+    next_mark = interval          # None when the timer is off
+    words_this_min = 0
+
+    def surface(line, marker=False):
+        if emit:
+            print(line, flush=True)
+            if outfh:
+                outfh.write(line + "\n")
+                outfh.flush()
+        else:
+            prefix = "" if marker else "✓ "
+            sys.stdout.write("\r\033[K" + prefix + line + "\n")
+            sys.stdout.flush()
+
     try:
         async for raw in ws:
             try:
@@ -119,7 +159,29 @@ async def receive(ws, emit, outfh=None):
                 if not text or text == last:
                     continue
                 last = text
-                if emit:
+                words = m.get("words") or []
+                if next_mark is not None and words:
+                    # Split this segment at each minute boundary it crosses, using
+                    # the per-word audio-time so the marker lands on the right word.
+                    bucket = []
+                    for w in words:
+                        st = w.get("start")
+                        while st is not None and st >= next_mark:
+                            seg = "".join(x.get("text", "") for x in bucket).strip()
+                            if seg:
+                                surface(seg)
+                                words_this_min += count_words(seg)
+                            surface(f"⏱ {mmss(next_mark)} · {words_this_min} words",
+                                    marker=True)
+                            words_this_min = 0
+                            bucket = []
+                            next_mark += interval
+                        bucket.append(w)
+                    seg = "".join(x.get("text", "") for x in bucket).strip()
+                    if seg:
+                        surface(seg)
+                        words_this_min += count_words(seg)
+                elif emit:
                     print(text, flush=True)          # one plain line -> Hammerspoon
                     if outfh:
                         outfh.write(text + "\n")
@@ -153,6 +215,11 @@ async def main():
                          "higher = ignores ambient noise, idles/closes sooner")
     ap.add_argument("--out-file", default=None,
                     help="also append each finalized line here (for the Windows/AHK glue)")
+    ap.add_argument("--timer", action="store_true",
+                    help="practice mode: insert a pacing marker (⏱ M:SS · N words) every "
+                         "--timer-interval seconds, split at the exact word")
+    ap.add_argument("--timer-interval", type=float, default=60.0, dest="timer_interval",
+                    help="seconds between pacing markers when --timer is set (default 60)")
     args = ap.parse_args()
 
     key = os.environ.get("ELEVENLABS_API_KEY")
@@ -168,8 +235,14 @@ async def main():
         die("--silence must be > 0 seconds")
     if not 0 < args.vad_threshold <= 1:
         die("--vad-threshold must be between 0 and 1")
+    interval = None
+    if args.timer:
+        if args.timer_interval <= 0:
+            die("--timer-interval must be > 0 seconds")
+        interval = args.timer_interval
 
-    url = build_url("manual" if args.manual else "vad", args.silence, args.vad_threshold)
+    url = build_url("manual" if args.manual else "vad", args.silence, args.vad_threshold,
+                    include_timestamps=interval is not None)
 
     outfh = None
     if args.out_file:
@@ -193,7 +266,7 @@ async def main():
         async with websockets.connect(url, additional_headers={"xi-api-key": key},
                                       max_size=None) as ws:
             pump = asyncio.create_task(pump_audio(ws, proc))
-            recv = asyncio.create_task(receive(ws, args.emit, outfh))
+            recv = asyncio.create_task(receive(ws, args.emit, outfh, interval))
             # Stop as soon as either side ends (sox dying ends pump -> we exit,
             # rather than blocking forever waiting for transcripts).
             done, pending = await asyncio.wait({pump, recv},

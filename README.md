@@ -337,9 +337,18 @@ All settings live at the top of `init.lua`:
 | `M.realtimeSilenceSecs` | `0.6`           | Pause length that finalizes a realtime segment (lower = faster) |
 | `M.realtimeVadThreshold`| `0.4`           | Speech-vs-silence sensitivity 0-1; higher ignores ambient noise (closes sooner) |
 | `M.realtimeIdleSecs`| `30`                | Auto-close realtime after N seconds with no new text (`0` = off) |
+| `M.timer`           | `false`             | Practice mode: insert `⏱ M:SS · N words` pacing markers into the transcript |
+| `M.timerIntervalSecs`| `60`               | Seconds between pacing markers when `M.timer` is on (e.g. `300` for 5-min) |
 
 Leave `M.languageCode = nil` to get the mixed-language auto-detection that makes
 Scribe worth using.
+
+> **Practice mode (pacing timer).** For interview / public-speaking practice, set
+> `M.timer = true` to drop a marker into the transcript every `M.timerIntervalSecs`
+> so you can see your words-per-minute. It's placed at the exact word where the
+> minute ticks (via the API's word timestamps), so per-minute counts are accurate;
+> it appears when that segment commits (on your next pause), not exactly on the
+> second. Off by default since it writes markers into your text.
 
 ---
 

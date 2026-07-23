@@ -1,5 +1,13 @@
 # Design — pacing timer (practice mode)
 
+> **Status: implemented** on branch `feature/pacing-timer`. Schema confirmed against
+> the ElevenLabs docs — `committed_transcript_with_timestamps` carries a `words`
+> array of `{ text, start, end (seconds), type: "word"|"spacing", speaker_id }`, and
+> the word timestamps require the `include_timestamps=true` query param (which the
+> engine now sets whenever the timer is on). Engine: `--timer` / `--timer-interval`.
+> Glue toggles: mac `M.timer` / `M.timerIntervalSecs`; Windows `TIMER` /
+> `TIMER_INTERVAL`. All default off.
+
 **Goal:** while practicing interviews / public speaking with realtime dictation,
 drop a minute marker into the transcript every N seconds, so afterwards you can see
 how many words you spoke in each minute (a rough WPM / pacing read).

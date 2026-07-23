@@ -60,6 +60,31 @@ is `"^!Space"`, Ctrl+Shift+B is `"^+b"`. Save, then **quit from the tray and rel
 > browser bookmarks bar / VS Code build — a global hotkey shadows those. `Ctrl+Alt+…`
 > combos tend to be the safest.
 
+## Practice mode (pacing timer)
+
+For interview / public-speaking practice, the tool can drop a marker into the
+transcript every minute so you can see your words-per-minute afterward:
+
+```
+So the main challenge was scaling the pipeline …
+⏱ 1:00 · 132 words
+… we sharded by tenant, which halved p99 latency …
+⏱ 2:00 · 118 words
+```
+
+It's **off by default** (it writes markers into your text). Turn it on at the top of
+`scribe.ahk`, then quit from the tray and relaunch:
+
+```ahk
+TIMER          := true   ; enable pacing markers
+TIMER_INTERVAL := 60     ; seconds between markers (e.g. 300 for 5-minute marks)
+```
+
+The marker is placed at the exact word where the minute ticks (using the API's word
+timestamps), so per-minute counts are accurate — but since a segment only finalizes
+when you pause, the marker *appears* when that segment commits, not exactly on the
+second. Counts are bilingual (CJK characters + English words).
+
 ## Not needed on Windows
 
 - **No Accessibility permission** — Windows doesn't gate synthetic paste like macOS.

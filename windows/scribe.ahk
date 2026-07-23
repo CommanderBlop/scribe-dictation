@@ -89,6 +89,10 @@ for i, p in BATCH_PRESETS
 batchKeyMenu.Add()
 batchKeyMenu.Add("Custom…", (*) => CaptureHotkey("batch"))
 
+; Current name of each submenu's Custom item (Rename looks items up by name).
+rtCustomLabel := "Custom…"
+batchCustomLabel := "Custom…"
+
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Scribe Dictation", (*) => "")
 A_TrayMenu.Disable("Scribe Dictation")
@@ -311,9 +315,39 @@ SaveConfig() {
     IniWrite(BATCH_KEY, cfgFile, "scribe", "batch_key")
 }
 
+; AHK hotkey notation ("^+Space") -> readable label ("Ctrl+Shift+Space").
+KeyLabel(k) {
+    s := ""
+    if InStr(k, "^")
+        s .= "Ctrl+"
+    if InStr(k, "!")
+        s .= "Alt+"
+    if InStr(k, "+")
+        s .= "Shift+"
+    if InStr(k, "#")
+        s .= "Win+"
+    base := RegExReplace(k, "[\^!+#]")
+    if base != ""
+        base := StrUpper(SubStr(base, 1, 1)) SubStr(base, 2)
+    return s base
+}
+
+; Rename an item and remember its new name (Rename looks items up by name).
+UpdateItem(mnu, &curName, newName, checked) {
+    if curName != newName {
+        mnu.Rename(curName, newName)
+        curName := newName
+    }
+    if checked
+        mnu.Check(curName)
+    else
+        mnu.Uncheck(curName)
+}
+
 RefreshTrayChecks() {
     global TIMER, SHOW_CREDITS, TIMER_INTERVAL, RT_KEY, BATCH_KEY
     global intervalMenu, rtKeyMenu, batchKeyMenu, RT_PRESETS, BATCH_PRESETS
+    global rtCustomLabel, batchCustomLabel
     if TIMER
         A_TrayMenu.Check("Pacing timer (practice)")
     else
@@ -328,18 +362,24 @@ RefreshTrayChecks() {
         else
             intervalMenu.Uncheck(label)
     }
+    rtCustom := true
     for i, p in RT_PRESETS {
-        if RT_KEY = p[2]
-            rtKeyMenu.Check(p[1])
-        else
+        if RT_KEY = p[2] {
+            rtKeyMenu.Check(p[1]); rtCustom := false
+        } else
             rtKeyMenu.Uncheck(p[1])
     }
+    batchCustom := true
     for i, p in BATCH_PRESETS {
-        if BATCH_KEY = p[2]
-            batchKeyMenu.Check(p[1])
-        else
+        if BATCH_KEY = p[2] {
+            batchKeyMenu.Check(p[1]); batchCustom := false
+        } else
             batchKeyMenu.Uncheck(p[1])
     }
+    ; When the binding is a custom combo, show it (checked) on the Custom item so
+    ; it's visible; otherwise it's a plain "Custom…" and a preset is checked above.
+    UpdateItem(rtKeyMenu, &rtCustomLabel, rtCustom ? "Custom: " KeyLabel(RT_KEY) : "Custom…", rtCustom)
+    UpdateItem(batchKeyMenu, &batchCustomLabel, batchCustom ? "Custom: " KeyLabel(BATCH_KEY) : "Custom…", batchCustom)
 }
 
 ; Hotkey callbacks (variadic to swallow the hotkey-name arg AHK passes).

@@ -53,14 +53,13 @@ To close it, right-click the tray icon → **Quit**.
 ### Change the hotkeys
 
 Right-click the tray icon → **Realtime hotkey** / **Paragraph hotkey** and pick a
-preset (Ctrl+Shift+Space, Ctrl+Alt+Space, …). It rebinds immediately and is saved to
-`config.ini`, so it sticks across restarts and a `git pull` won't reset it.
+preset (Ctrl+Shift+Space, Ctrl+Alt+Space, …), or **Custom…** to capture your own — a
+small window records the next combo you press. Either way it rebinds immediately and
+is saved to `config.ini`, so it sticks across restarts and a `git pull` won't reset it.
 
-> Want a combo that isn't in the list? Edit `RT_KEY` / `BATCH_KEY` at the top of
-> `scribe.ahk` (AutoHotkey notation: `^` = Ctrl, `+` = Shift, `!` = Alt, `#` = Win),
-> then quit from the tray and relaunch. Avoid keys apps already use — **Ctrl+Shift+V**
-> (paste-plain) and **Ctrl+Shift+B** (bookmarks bar / VS Code build); `Ctrl+Alt+…`
-> combos tend to be safest.
+> Custom hotkeys should include Ctrl/Alt/Shift/Win (or be an F-key) so they don't
+> hijack a normal key. Avoid combos apps already use — **Ctrl+Shift+V** (paste-plain)
+> and **Ctrl+Shift+B** (bookmarks bar / VS Code build); `Ctrl+Alt+…` tends to be safest.
 
 ## Practice mode (pacing timer)
 

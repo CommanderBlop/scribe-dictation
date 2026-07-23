@@ -168,12 +168,47 @@ end
 local function setParagraphKey(p)
   M.toggleKey = { mods = p.mods, key = p.key }; bindParagraph(); saveSettings()
 end
+-- "Custom…" — listen for the next real keypress and bind it live.
+local function captureHotkey(setter)
+  local tap, timeout
+  local function stop()
+    if tap then tap:stop(); tap = nil end
+    if timeout then timeout:stop(); timeout = nil end
+    hs.alert.closeAll()
+  end
+  tap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(e)
+    local key = hs.keycodes.map[e:getKeyCode()]
+    if not key then return true end
+    if key == "escape" then stop(); hs.alert.show("Hotkey change cancelled."); return true end
+    local flags, mods = e:getFlags(), {}
+    for _, m in ipairs({ "cmd", "alt", "ctrl", "shift" }) do
+      if flags[m] then mods[#mods + 1] = m end
+    end
+    if #mods == 0 and not key:match("^f%d+$") then
+      stop()
+      hs.alert.show("Use a modifier (⌘⌃⌥⇧) or an F-key so it won't hijack a normal key.", 3)
+      return true
+    end
+    stop()
+    setter({ mods = mods, key = key })
+    hs.alert.show("Hotkey set.")
+    return true   -- swallow the captured key
+  end)
+  tap:start()
+  hs.alert.show("Press your shortcut…  (Esc to cancel)", 5)
+  timeout = hs.timer.doAfter(5, function()
+    if tap then tap:stop(); tap = nil; hs.alert.closeAll(); hs.alert.show("Hotkey capture timed out.") end
+  end)
+end
+
 local function presetItems(presets, current, setter)
   local items = {}
   for _, p in ipairs(presets) do
     items[#items + 1] = { title = p.label, checked = keyEq(current, p),
                           fn = function() setter(p) end }
   end
+  items[#items + 1] = { title = "-" }
+  items[#items + 1] = { title = "Custom…", fn = function() captureHotkey(setter) end }
   return items
 end
 

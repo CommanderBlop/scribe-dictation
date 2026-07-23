@@ -81,9 +81,13 @@ intervalMenu.Add("5 minutes", (*) => SetInterval(300))
 rtKeyMenu := Menu()
 for i, p in RT_PRESETS
     rtKeyMenu.Add(p[1], SetRtKey.Bind(p[2]))
+rtKeyMenu.Add()
+rtKeyMenu.Add("Custom…", (*) => CaptureHotkey("rt"))
 batchKeyMenu := Menu()
 for i, p in BATCH_PRESETS
     batchKeyMenu.Add(p[1], SetBatchKey.Bind(p[2]))
+batchKeyMenu.Add()
+batchKeyMenu.Add("Custom…", (*) => CaptureHotkey("batch"))
 
 A_TrayMenu.Delete()
 A_TrayMenu.Add("Scribe Dictation", (*) => "")
@@ -366,6 +370,36 @@ SetBatchKey(newKey, *) {
     try Hotkey(BATCH_KEY, HotkeyBatch, "On")
     SaveConfig()
     RefreshTrayChecks()
+}
+
+; "Custom…" — a tiny window with AHK's native Hotkey control: press a combo, Save.
+CaptureHotkey(kind) {
+    title := "Scribe — set " (kind = "rt" ? "realtime" : "paragraph") " hotkey"
+    g := Gui("+AlwaysOnTop -MinimizeBox", title)
+    g.SetFont("s10")
+    g.Add("Text", , "Press the shortcut you want, then click Save.`nInclude Ctrl / Alt / Shift / Win (or use an F-key).")
+    hc := g.Add("Hotkey", "w240")
+    save := g.Add("Button", "Default w90", "Save")
+    g.Add("Button", "x+10 w90", "Cancel").OnEvent("Click", (*) => g.Destroy())
+    save.OnEvent("Click", SaveCapture.Bind(kind, g, hc))
+    g.Show()
+}
+
+SaveCapture(kind, g, hc, *) {
+    v := hc.Value
+    if v = "" {
+        TrayTip("No key captured — press a combo first.", "Scribe", 2)
+        return
+    }
+    if !RegExMatch(v, "[\^!+#]") && !RegExMatch(v, "i)F\d+$") {
+        TrayTip("Use a combo with Ctrl/Alt/Shift/Win (or an F-key) so it won't hijack a normal key.", "Scribe", 4)
+        return
+    }
+    g.Destroy()
+    if kind = "rt"
+        SetRtKey(v)
+    else
+        SetBatchKey(v)
 }
 
 ToggleTimer() {

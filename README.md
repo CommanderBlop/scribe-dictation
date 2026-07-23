@@ -361,8 +361,8 @@ Scribe worth using.
 > *Launch Hammerspoon at login* so the ⚪ is always there.
 >
 > The menu also has **Realtime hotkey** / **Paragraph hotkey** submenus — pick a
-> preset (F5, ⌃⇧Space, …) and it rebinds immediately and persists. For a combo
-> that isn't listed, set `M.realtimeKey` / `M.toggleKey` in the file.
+> preset (F5, ⌃⇧Space, …), or **Custom…** to capture your own (it listens for the
+> next combo you press; Esc cancels). It rebinds immediately and persists.
 
 ---
 

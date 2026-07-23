@@ -1,7 +1,7 @@
 -- ============================================================
 --  Scribe Dictation — push-to-talk for macOS (Hammerspoon)
 --  Fn+F5  realtime mode  : stream mic, paste each segment as you speak
---  Fn+F4  paragraph mode : record -> ElevenLabs Scribe v2 -> paste whole text
+--  Fn+F4  recording mode : record -> ElevenLabs Scribe v2 -> paste whole text
 --
 --  Why: replaces Apple Dictation with ElevenLabs Scribe v2, whose smart
 --  language detection handles mixed-language speech (e.g. Chinese + English
@@ -21,8 +21,8 @@ M.keychainService = "elevenlabs-api"   -- Keychain generic-password service name
 M.modelId  = "scribe_v2"
 M.sox      = "/opt/homebrew/bin/sox"        -- `which sox` (Apple Silicon default)
 M.recPath  = "/tmp/scribe_rec.wav"
-M.maxSecs  = 120          -- safety auto-stop while recording (paragraph mode)
-M.toggleKey = { mods = {}, key = "f4" }   -- paragraph mode; media row: press Fn+F4
+M.maxSecs  = 120          -- safety auto-stop while recording (recording mode)
+M.toggleKey = { mods = {}, key = "f4" }   -- recording mode; media row: press Fn+F4
 -- Optional: bias language. nil = auto-detect (best for mixed speech).
 M.languageCode = nil      -- e.g. "zh", "en", or nil for auto
 -- Show a credit toast after each transcription. Requires the API key to have
@@ -149,7 +149,7 @@ local function bindRealtime()
     rtHotkey = hs.hotkey.bind(M.realtimeKey.mods, M.realtimeKey.key, function() M.rtToggle() end)
   end
 end
-local function bindParagraph()
+local function bindRecording()
   if batchHotkey then batchHotkey:delete(); batchHotkey = nil end
   batchHotkey = hs.hotkey.bind(M.toggleKey.mods, M.toggleKey.key, function() M.toggle() end)
 end
@@ -165,8 +165,8 @@ end
 local function setRealtimeKey(p)
   M.realtimeKey = { mods = p.mods, key = p.key }; bindRealtime(); saveSettings()
 end
-local function setParagraphKey(p)
-  M.toggleKey = { mods = p.mods, key = p.key }; bindParagraph(); saveSettings()
+local function setRecordingKey(p)
+  M.toggleKey = { mods = p.mods, key = p.key }; bindRecording(); saveSettings()
 end
 -- Human label for the current binding, e.g. ⌃⌥J — shown so a custom key is visible.
 local MODSYM = { ctrl = "⌃", alt = "⌥", shift = "⇧", cmd = "⌘" }
@@ -299,8 +299,8 @@ if menu then
       { title = "-" },
       { title = "Realtime hotkey  ·  " .. fmtKey(M.realtimeKey),
         menu = presetItems(RT_PRESETS, M.realtimeKey, setRealtimeKey) },
-      { title = "Paragraph hotkey  ·  " .. fmtKey(M.toggleKey),
-        menu = presetItems(BATCH_PRESETS, M.toggleKey, setParagraphKey) },
+      { title = "Recording hotkey  ·  " .. fmtKey(M.toggleKey),
+        menu = presetItems(BATCH_PRESETS, M.toggleKey, setRecordingKey) },
       { title = "-" },
       { title = "Show credit balloon", checked = M.showCredits,
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },
@@ -390,7 +390,7 @@ local function transcribe()
 end
 
 local function startRec()
-  if rtTask then return end   -- don't start paragraph mode while realtime streams
+  if rtTask then return end   -- don't start recording mode while realtime streams
   if not M.apiKey:match("^sk_") then
     hs.alert.show("Set your ElevenLabs API key in init.lua first"); return
   end
@@ -476,7 +476,7 @@ local function rtResetIdle()
     if rtTask then
       rtStop()
       hs.alert.show("Realtime auto-closed — no speech for " .. M.realtimeIdleSecs ..
-                    "s.\nPress Fn+F5 to start again.", 4)
+                    "s.\nPress " .. fmtKey(M.realtimeKey) .. " to start again.", 4)
     end
   end)
 end
@@ -546,12 +546,13 @@ function M.rtToggle()
 end
 
 -- Hotkeys — bound via helpers so the menu-bar submenus can rebind them live.
--- Paragraph = press to start, press again to stop (whole utterance at once);
+-- Recording = press to start, press again to stop (whole utterance at once);
 -- realtime = paste each segment as you speak.
-bindParagraph()
+bindRecording()
 bindRealtime()
 
-hs.alert.show("Scribe loaded — Fn+F5 realtime · Fn+F4 paragraph")
+hs.alert.show("Scribe loaded — " .. fmtKey(M.realtimeKey) .. " realtime · " ..
+              fmtKey(M.toggleKey) .. " recording")
 
 -- Onboarding self-check: if setup is incomplete, say exactly what's missing
 -- instead of failing silently on the first keypress. Only alerts on problems.

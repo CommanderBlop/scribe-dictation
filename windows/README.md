@@ -4,7 +4,7 @@ A Windows port of the macOS tool, using **AutoHotkey v2** as the glue (global
 hotkey + paste + tray) and reusing the Python side for transcription. This mirrors
 the macOS architecture (thin glue + shared engine).
 
-> **Status:** both modes (realtime + paragraph) are confirmed working on Windows.
+> **Status:** both modes (realtime + recording) are confirmed working on Windows.
 > It's written/maintained from a Mac, so if something breaks, please open an issue —
 > failures now surface as a tray notification rather than failing silently.
 
@@ -36,11 +36,11 @@ Two modes — click into any text box, then:
 
 - **Ctrl+Shift+Space — realtime** (primary): text is pasted segment-by-segment as you
   speak; press again to stop.
-- **Ctrl+Shift+B — paragraph** (fallback): record, press again to stop, and the whole
+- **Ctrl+Shift+B — recording** (fallback): record, press again to stop, and the whole
   clip is transcribed and pasted at once.
 
-The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = paragraph
-recording — and a small balloon shows your **credits left** after each use.
+The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 red = recording
+— and a small balloon shows your **credits left** after each use.
 
 **Right-click the tray icon** for a small settings menu: toggle the pacing timer and
 its interval, the credit balloon, and **Set / update API key** (opens the masked key
@@ -52,7 +52,7 @@ To close it, right-click the tray icon → **Quit**.
 
 ### Change the hotkeys
 
-Right-click the tray icon → **Realtime hotkey** / **Paragraph hotkey** and pick a
+Right-click the tray icon → **Realtime hotkey** / **Recording hotkey** and pick a
 preset (Ctrl+Shift+Space, Ctrl+Alt+Space, …), or **Custom…** to capture your own — a
 small window records the next combo you press. Either way it rebinds immediately and
 is saved to `config.ini`, so it sticks across restarts and a `git pull` won't reset it.

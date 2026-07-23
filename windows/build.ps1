@@ -8,7 +8,7 @@
 #       icon-*.ico
 #       bin\
 #         scribe_stream.exe   (realtime engine, frozen)
-#         scribe_batch.exe    (paragraph transcription, frozen)
+#         scribe_batch.exe    (recording-mode transcription, frozen)
 #         scribe_credits.exe  (credits balloon, frozen)
 #         sox.exe + *.dll     (bundled recorder)
 #

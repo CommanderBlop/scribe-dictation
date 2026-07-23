@@ -359,6 +359,10 @@ Scribe worth using.
 > dictation). If you ever quit Hammerspoon, reopen **Hammerspoon** (Spotlight →
 > "Hammerspoon") — it reloads this config on launch. Tick Hammerspoon → Preferences →
 > *Launch Hammerspoon at login* so the ⚪ is always there.
+>
+> The menu also has **Realtime hotkey** / **Paragraph hotkey** submenus — pick a
+> preset (F5, ⌃⇧Space, …) and it rebinds immediately and persists. For a combo
+> that isn't listed, set `M.realtimeKey` / `M.toggleKey` in the file.
 
 ---
 

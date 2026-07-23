@@ -52,21 +52,15 @@ To close it, right-click the tray icon → **Quit**.
 
 ### Change the hotkeys
 
-Edit the top of `windows\scribe.ahk`:
+Right-click the tray icon → **Realtime hotkey** / **Paragraph hotkey** and pick a
+preset (Ctrl+Shift+Space, Ctrl+Alt+Space, …). It rebinds immediately and is saved to
+`config.ini`, so it sticks across restarts and a `git pull` won't reset it.
 
-```ahk
-RT_KEY    := "^+Space"   ; realtime
-BATCH_KEY := "^+b"       ; paragraph
-```
-
-AutoHotkey notation: `^` = Ctrl, `+` = Shift, `!` = Alt, `#` = Win. So Ctrl+Alt+Space
-is `"^!Space"`, Ctrl+Shift+B is `"^+b"`. Save, then **quit from the tray and relaunch**
-(or re-run the installer) to apply.
-
-> Pick keys that don't clash with app shortcuts you use: **Ctrl+Shift+V** is
-> "paste without formatting" almost everywhere, and **Ctrl+Shift+B** toggles the
-> browser bookmarks bar / VS Code build — a global hotkey shadows those. `Ctrl+Alt+…`
-> combos tend to be the safest.
+> Want a combo that isn't in the list? Edit `RT_KEY` / `BATCH_KEY` at the top of
+> `scribe.ahk` (AutoHotkey notation: `^` = Ctrl, `+` = Shift, `!` = Alt, `#` = Win),
+> then quit from the tray and relaunch. Avoid keys apps already use — **Ctrl+Shift+V**
+> (paste-plain) and **Ctrl+Shift+B** (bookmarks bar / VS Code build); `Ctrl+Alt+…`
+> combos tend to be safest.
 
 ## Practice mode (pacing timer)
 

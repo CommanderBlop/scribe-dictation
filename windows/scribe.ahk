@@ -108,7 +108,7 @@ A_TrayMenu.Add("Recording hotkey", batchKeyMenu)
 A_TrayMenu.Add()
 A_TrayMenu.Add("Show credits", (*) => ToggleCredits())
 A_TrayMenu.Add()
-A_TrayMenu.Add("Set / update API key…", (*) => SetApiKey())
+A_TrayMenu.Add("Set / Update API key…", (*) => SetApiKey())
 A_TrayMenu.Add("Quit", (*) => ExitApp())
 RefreshTrayChecks()
 

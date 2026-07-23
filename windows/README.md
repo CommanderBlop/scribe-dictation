@@ -47,7 +47,7 @@ The **tray dot** shows state — ⚪ gray = idle, 🟢 green = realtime, 🔴 re
 🟡 amber = processing — and a small balloon shows your **credits left** after each use.
 
 **Right-click the tray icon** for a small settings menu: toggle the pacing timer and
-its interval, the credit balloon, and **Set / update API key** (opens the masked key
+its interval, the credit balloon, and **Set / Update API key** (opens the masked key
 prompt). Choices persist to `%LOCALAPPDATA%\ScribeDictation\config.ini`.
 
 **Closed it / need to reopen?** It auto-starts at login. To reopen it now, search

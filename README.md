@@ -362,10 +362,11 @@ Scribe worth using.
 > since it writes markers into your text.
 
 > **Menu-bar panel & reopening.** The menu-bar dot (⚪ idle · 🟢 realtime · 🔴
-> recording · 🟡 processing) is a small settings panel — the toggles above plus **Set / update API
+> recording · 🟡 processing) is a small settings panel — the toggles above plus **Set / Update API
 > key…** (a masked prompt that writes to your Keychain, picked up on the next
-> dictation). It's the **only** icon Scribe shows: Hammerspoon's own menu icon is
-> hidden (`M.hideHammerspoonIcon`), so the dot doubles as the way into Hammerspoon —
+> dictation). It's the **only** icon Scribe shows by default: Hammerspoon's own menu
+> icon is hidden (toggle it back any time via **Show/Hide Hammerspoon Icon** in the
+> menu), so the dot doubles as the way into Hammerspoon —
 > **Hammerspoon console** (logs/errors, and its toolbar opens Preferences), **Reload
 > config**, and **Quit Scribe** all live in this menu. After quitting, reopen from
 > Spotlight: search **"Scribe Dictation"** (a small launcher the installer adds — the

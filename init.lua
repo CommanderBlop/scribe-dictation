@@ -177,14 +177,32 @@ local function presetItems(presets, current, setter)
   return items
 end
 
--- Menu-bar icon: always visible. The title shows state; the dropdown is a small
--- settings panel whose toggles persist via hs.settings (no file editing).
+-- Menu-bar icon: always visible. State is a small muted dot — drawn (not an emoji),
+-- so it's soft/semi-transparent and matches the Windows tray dots exactly. The
+-- dropdown is a settings panel whose toggles persist via hs.settings (no file edits).
+local function dotIcon(r, g, b, a)
+  local sz = 14
+  local c = hs.canvas.new{ x = 0, y = 0, w = sz, h = sz }
+  c[1] = { type = "circle", action = "fill",
+           center = { x = sz / 2, y = sz / 2 }, radius = sz / 2 - 1,
+           fillColor = { red = r, green = g, blue = b, alpha = a } }
+  local img = c:imageFromCanvas()
+  c:delete()
+  return img
+end
+local DOTS = {   -- same low-saturation colors as windows/icon-*.ico
+  idle      = dotIcon(150 / 255, 152 / 255, 158 / 255, 0.45),  -- dim gray = off
+  realtime  = dotIcon(104 / 255, 164 / 255, 120 / 255, 0.92),  -- muted green
+  recording = dotIcon(198 / 255, 110 / 255, 110 / 255, 0.92),  -- muted red
+  working   = dotIcon(198 / 255, 168 / 255, 104 / 255, 0.92),  -- muted amber
+}
 local menu = hs.menubar.new(true)
 local function setState(s)
   state = s
   if not menu then return end
   menu:returnToMenuBar()
-  menu:setTitle(({ idle = "⚪", recording = "🔴", working = "🟡" })[s] or "⚪")
+  menu:setTitle("")
+  menu:setIcon(DOTS[s] or DOTS.idle)
 end
 
 -- Prompt for a new API key (masked) and store it in the Keychain — same entry
@@ -346,7 +364,7 @@ end
 
 -- ---------- realtime streaming (Fn+F5) ----------
 -- Launches the Python engine; each finalized segment it prints is pasted at
--- the cursor as you speak. 🟢 in the menu bar while streaming.
+-- the cursor as you speak. A green menu-bar dot shows while streaming.
 local function rtPaste(line)
   line = line:gsub("[\1-\8\11-\31\127]", ""):gsub("%s+$", "")
   if line == "" then return end
@@ -394,7 +412,7 @@ local function rtStart()
     return
   end
   rtBuf = ""
-  if menu then menu:returnToMenuBar(); menu:setTitle("🟢") end
+  if menu then menu:returnToMenuBar(); menu:setTitle(""); menu:setIcon(DOTS.realtime) end
   local rtArgs = {"-u", M.pyProject .. "/realtime/scribe_stream.py", "--emit",
     "--silence", tostring(M.realtimeSilenceSecs),
     "--vad-threshold", tostring(M.realtimeVadThreshold)}

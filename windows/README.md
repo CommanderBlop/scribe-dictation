@@ -75,7 +75,7 @@ So the main challenge was scaling the pipeline …
 
 It's **off by default** (it writes markers into your text). Turn it on from the
 **tray menu** — right-click the Scribe tray icon → **Pacing timer (practice)**, and
-pick **Timer interval → 1 / 2 / 5 minutes**. Your choice is saved to
+pick **Timer interval → 10 / 30 seconds / 1 / 5 minutes**. Your choice is saved to
 `%LOCALAPPDATA%\ScribeDictation\config.ini`, so it survives restarts and a `git pull`
 never overwrites it. (It applies to the *next* time you start realtime.)
 

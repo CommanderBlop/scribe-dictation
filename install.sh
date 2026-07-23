@@ -93,6 +93,22 @@ echo "   • Microphone    — lets sox record your voice. macOS asks for this t
 echo "                     dictate, not now — just click Allow then. Nothing else is accessed."
 open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" || true
 
+# --- Spotlight launcher: searching "Scribe Dictation" reopens the tool -----
+# Hammerspoon's own menu icon is hidden (the Scribe dot is the single indicator,
+# like the one tray icon on Windows), so give Spotlight a familiar name to
+# reopen after quitting — the mac twin of the Windows Start-menu shortcut.
+APP="/Applications/Scribe Dictation.app"
+[ -w /Applications ] || { mkdir -p "$HOME/Applications"; APP="$HOME/Applications/Scribe Dictation.app"; }
+rm -rf "$APP"
+if osacompile -o "$APP" -e 'do shell script "open -a Hammerspoon"' 2>/dev/null; then
+  # brand it with the dot icon (Assets.car would override applet.icns — drop it)
+  rm -f "$APP/Contents/Resources/Assets.car"
+  cp "$REPO/assets/scribe-dot.icns" "$APP/Contents/Resources/applet.icns" 2>/dev/null || true
+  touch "$APP"
+else
+  say "Couldn't create the Spotlight launcher (optional) — reopen via Spotlight → Hammerspoon."
+fi
+
 # Relaunch Hammerspoon so it loads the freshly-copied init.lua (no manual
 # "Reload Config" step). We use killall + open rather than `osascript quit` —
 # AppleScript'ing another app triggers a "Terminal wants to control Hammerspoon"

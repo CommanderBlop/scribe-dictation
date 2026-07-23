@@ -364,9 +364,14 @@ Scribe worth using.
 > **Menu-bar panel & reopening.** The menu-bar dot (⚪ idle · 🟢 realtime · 🔴
 > recording · 🟡 processing) is a small settings panel — the toggles above plus **Set / update API
 > key…** (a masked prompt that writes to your Keychain, picked up on the next
-> dictation). If you ever quit Hammerspoon, reopen **Hammerspoon** (Spotlight →
-> "Hammerspoon") — it reloads this config on launch. Tick Hammerspoon → Preferences →
-> *Launch Hammerspoon at login* so the ⚪ is always there.
+> dictation). It's the **only** icon Scribe shows: Hammerspoon's own menu icon is
+> hidden (`M.hideHammerspoonIcon`), so the dot doubles as the way into Hammerspoon —
+> **Hammerspoon console** (logs/errors, and its toolbar opens Preferences), **Reload
+> config**, and **Quit Scribe** all live in this menu. After quitting, reopen from
+> Spotlight: search **"Scribe Dictation"** (a small launcher the installer adds — the
+> mac twin of the Windows Start-menu shortcut) or just "Hammerspoon"; the config
+> reloads on launch. In the console's Preferences, tick *Launch Hammerspoon at
+> login* so the ⚪ is always there.
 >
 > The menu also has **Realtime hotkey** / **Recording hotkey** submenus — pick a
 > preset (F5, ⌃⇧Space, …), or **Custom…** to capture your own (it listens for the

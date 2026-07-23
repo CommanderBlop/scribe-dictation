@@ -18,6 +18,9 @@ ask() { printf "%s [y/N]: " "$1"; local a; read -r a < /dev/tty 2>/dev/null || a
 
 say "Uninstalling Scribe Dictation…"
 
+# Spotlight launcher (created by install.sh)
+rm -rf "/Applications/Scribe Dictation.app" "$HOME/Applications/Scribe Dictation.app"
+
 # 1. stop Hammerspoon
 osascript -e 'quit app "Hammerspoon"' 2>/dev/null || true
 

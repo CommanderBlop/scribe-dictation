@@ -71,12 +71,19 @@ $ahk = $cands | Where-Object { $_ -match '\\v2\\' -or $_ -match 'AutoHotkey64\.e
 if (-not $ahk) { $ahk = $cands | Select-Object -First 1 }
 $script = "$repo\windows\scribe.ahk"
 
-Say "Adding a startup shortcut…"
-$startup = [Environment]::GetFolderPath('Startup')
+Say "Adding Start-menu + startup shortcuts…"
 $ws = New-Object -ComObject WScript.Shell
-$sc = $ws.CreateShortcut("$startup\Scribe Dictation.lnk")
-if ($ahk) { $sc.TargetPath = $ahk; $sc.Arguments = "`"$script`"" } else { $sc.TargetPath = $script }
-$sc.Save()
+$icon = "$repo\windows\icon-idle.ico"
+function New-ScribeShortcut($path) {
+    $sc = $ws.CreateShortcut($path)
+    if ($ahk) { $sc.TargetPath = $ahk; $sc.Arguments = "`"$script`"" } else { $sc.TargetPath = $script }
+    if (Test-Path $icon) { $sc.IconLocation = $icon }
+    $sc.Save()
+}
+# Startup = auto-run at login; Programs = a clickable "Scribe Dictation" you can
+# search in the Start menu to reopen it any time (e.g. after you Quit from the tray).
+New-ScribeShortcut ([Environment]::GetFolderPath('Startup') + "\Scribe Dictation.lnk")
+New-ScribeShortcut ([Environment]::GetFolderPath('Programs') + "\Scribe Dictation.lnk")
 
 Say "Launching Scribe…"
 if ($ahk) {

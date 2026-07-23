@@ -132,8 +132,28 @@ local function setState(s)
   state = s
   if not menu then return end
   menu:returnToMenuBar()
-  menu:setTitle(({ idle = "🎙️", recording = "🔴", working = "⏳" })[s] or "🎙️")
+  menu:setTitle(({ idle = "⚪", recording = "🔴", working = "⏳" })[s] or "⚪")
 end
+
+-- Prompt for a new API key (masked) and store it in the Keychain — same entry
+-- set-key.sh writes, so it's picked up on the next dictation immediately.
+local function setApiKey()
+  hs.focus()
+  local ok, res = hs.osascript.applescript(
+    'display dialog "Paste your ElevenLabs API key (sk_…):" with title "Scribe" ' ..
+    'default answer "" with hidden answer buttons {"Cancel", "Save"} default button "Save"')
+  if not ok or type(res) ~= "table" then return end   -- Cancel raises → ok=false
+  local key = res.textReturned or ""
+  if not key:match("^sk_[A-Za-z0-9]+$") then
+    hs.alert.show("That doesn't look like an sk_… key — nothing changed."); return
+  end
+  local user = os.getenv("USER") or ""
+  local _, wrote = hs.execute("/usr/bin/security add-generic-password -a '" .. user ..
+    "' -s '" .. M.keychainService .. "' -T /usr/bin/security -w '" .. key .. "' -U 2>/dev/null")
+  if wrote then M.apiKey = key; hs.alert.show("✅ API key saved.")
+  else hs.alert.show("Couldn't write to the Keychain.") end
+end
+
 if menu then
   menu:setMenu(function()
     return {
@@ -153,6 +173,7 @@ if menu then
       { title = "Show credit balloon", checked = M.showCredits,
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },
       { title = "-" },
+      { title = "Set / update API key…", fn = setApiKey },
       { title = "Reload config", fn = function() hs.reload() end },
     }
   end)

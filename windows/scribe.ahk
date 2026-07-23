@@ -81,6 +81,7 @@ A_TrayMenu.Add("Pacing timer (practice)", (*) => ToggleTimer())
 A_TrayMenu.Add("Timer interval", intervalMenu)
 A_TrayMenu.Add("Show credits", (*) => ToggleCredits())
 A_TrayMenu.Add()
+A_TrayMenu.Add("Set / update API key…", (*) => SetApiKey())
 A_TrayMenu.Add("Quit", (*) => ExitApp())
 RefreshTrayChecks()
 
@@ -323,4 +324,15 @@ SetInterval(secs) {
     TIMER_INTERVAL := secs
     SaveConfig()
     RefreshTrayChecks()
+}
+
+SetApiKey() {
+    ; Reuse the audited set-key.ps1 (masked -AsSecureString input, stores to the
+    ; Windows Credential Manager). The engine reads the key fresh on each use.
+    setkey := A_ScriptDir "\set-key.ps1"
+    if !FileExist(setkey) {
+        TrayTip("set-key.ps1 not found next to scribe.ahk", "Scribe", 3)
+        return
+    }
+    Run('powershell -NoProfile -ExecutionPolicy Bypass -File "' setkey '"')
 }

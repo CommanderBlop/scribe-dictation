@@ -119,6 +119,7 @@ local function saveSettings()
   hs.settings.set(SETTINGS_KEY, {
     timer = M.timer, timerIntervalSecs = M.timerIntervalSecs, showCredits = M.showCredits,
     realtimeKey = M.realtimeKey, toggleKey = M.toggleKey,
+    hideHammerspoonIcon = M.hideHammerspoonIcon,
   })
 end
 do
@@ -127,6 +128,7 @@ do
     if s.timer ~= nil then M.timer = s.timer end
     if s.timerIntervalSecs then M.timerIntervalSecs = s.timerIntervalSecs end
     if s.showCredits ~= nil then M.showCredits = s.showCredits end
+    if s.hideHammerspoonIcon ~= nil then M.hideHammerspoonIcon = s.hideHammerspoonIcon end
     if type(s.realtimeKey) == "table" and s.realtimeKey.key then M.realtimeKey = s.realtimeKey end
     if type(s.toggleKey) == "table" and s.toggleKey.key then M.toggleKey = s.toggleKey end
   end
@@ -318,8 +320,15 @@ if menu then
       { title = "Show credit balloon", checked = M.showCredits,
         fn = function() M.showCredits = not M.showCredits; saveSettings() end },
       { title = "-" },
-      { title = "Set / update API key…", fn = setApiKey },
+      { title = "Set / Update API key…", fn = setApiKey },
       { title = "Hammerspoon console", fn = function() hs.openConsole() end },
+      -- checked = the Hammerspoon icon is currently visible
+      { title = "Show/Hide Hammerspoon Icon", checked = not M.hideHammerspoonIcon,
+        fn = function()
+          M.hideHammerspoonIcon = not M.hideHammerspoonIcon
+          hs.menuIcon(not M.hideHammerspoonIcon)
+          saveSettings()
+        end },
       { title = "Reload config", fn = function() hs.reload() end },
       { title = "Quit Scribe", fn = quitScribe },
     }
